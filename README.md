@@ -1,4 +1,4 @@
-# Loop Go SDK
+# Loop Python SDK
 English | [简体中文](README.zh_CN.md)
 
 ## Overview

@@ -2,7 +2,7 @@
 name = "cozeloop"
 version = "0.1.0"
 description = "coze loop sdk"
-authors = ["Your Name <you@example.com>"]
+authors = ["JiangQi715 <jiangqi.rrt@bytedance.com>"]
 license = "MIT"
 readme = "README.md"
 

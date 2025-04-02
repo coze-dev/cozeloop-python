@@ -2,9 +2,8 @@
 # SPDX-License-Identifier: MIT
 
 import logging
-import types
 from abc import ABC
-from typing import Dict, Any, List, Tuple
+from typing import Dict, Any, List
 from datetime import datetime
 import threading
 import json
@@ -14,7 +13,7 @@ from cozeloop import span
 from cozeloop.attribute.trace.model import ModelInput, ModelOutput, ModelMessagePartType, ModelMessage, ModelMessagePart, ModelImageURL, ModelFileURL, ModelChoice
 from cozeloop.attribute.trace.runtime import Runtime
 from cozeloop.attribute.trace.span_key import ERROR, PROMPT_KEY, PROMPT_VERSION, MODEL_PROVIDER, MODEL_NAME, RUNTIME_
-from cozeloop.attribute.trace.span_value import V_LANG_GO, V_SCENE_CUSTOM
+from cozeloop.attribute.trace.span_value import V_SCENE_CUSTOM, V_LANG_PYTHON
 from cozeloop.entities.prompt import Prompt
 from cozeloop.internal.consts import *
 from cozeloop.internal.trace.noop_span import NoopSpan
@@ -473,7 +472,7 @@ class Span(span.Span, SpanContext, ABC):
         if runtime_obj is not None and isinstance(runtime_obj, Runtime):
             runtime = runtime_obj
 
-        runtime.language = V_LANG_GO
+        runtime.language = V_LANG_PYTHON
         if not runtime.scene:
             runtime.scene = V_SCENE_CUSTOM
         runtime.loop_sdk_version = VERSION

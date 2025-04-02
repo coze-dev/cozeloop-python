@@ -1,5 +1,4 @@
-
-# Loop Go SDK
+# Loop Python SDK
 [English](README.md) | 简体中文
 
 ## 概述
