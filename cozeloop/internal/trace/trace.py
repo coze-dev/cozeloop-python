@@ -5,8 +5,7 @@ import time
 from datetime import datetime
 from typing import Dict, Optional
 
-from cozeloop.attribute.trace.runtime import Runtime
-from cozeloop.attribute.trace.span_key import RUNTIME_
+from cozeloop.spec.tracespce import Runtime, RUNTIME_
 from cozeloop.internal import consts
 from cozeloop.internal.trace.span import from_header, Span, SpanContext, \
     get_newest_span_from_context, set_span_to_context, logger

@@ -5,7 +5,7 @@ from typing import List, Optional, Any
 
 from pydantic import BaseModel
 
-from cozeloop.attribute.trace.model import ModelMessage
+from cozeloop.spec.tracespce import ModelMessage
 
 
 class PromptInput(BaseModel):

@@ -76,7 +76,7 @@ def to_json(param: Any) -> str:
     try:
         if isinstance(param, BaseModel):
             return param.model_dump_json()
-        return json.dumps(param)
+        return json.dumps(param, ensure_ascii=False)
     except json.JSONDecodeError:
         return param.__str__()
     except Exception:

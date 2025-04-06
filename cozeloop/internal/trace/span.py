@@ -10,10 +10,10 @@ import json
 import urllib.parse
 
 from cozeloop import span
-from cozeloop.attribute.trace.model import ModelInput, ModelOutput, ModelMessagePartType, ModelMessage, ModelMessagePart, ModelImageURL, ModelFileURL, ModelChoice
-from cozeloop.attribute.trace.runtime import Runtime
-from cozeloop.attribute.trace.span_key import ERROR, PROMPT_KEY, PROMPT_VERSION, MODEL_PROVIDER, MODEL_NAME, RUNTIME_
-from cozeloop.attribute.trace.span_value import V_SCENE_CUSTOM, V_LANG_PYTHON
+from cozeloop.spec.tracespce import (ModelInput, ModelOutput, ModelMessagePartType, ModelMessage, ModelMessagePart,
+                                     ModelImageURL, ModelFileURL, ModelChoice, Runtime, ERROR, PROMPT_KEY,
+                                     PROMPT_VERSION, MODEL_PROVIDER, MODEL_NAME, RUNTIME_, CALL_OPTIONS,
+                                     V_SCENE_CUSTOM, V_LANG_PYTHON)
 from cozeloop.entities.prompt import Prompt
 from cozeloop.internal.consts import *
 from cozeloop.internal.trace.noop_span import NoopSpan
@@ -293,8 +293,8 @@ class Span(span.Span, SpanContext, ABC):
         except Exception:
             return 0
 
-    def set_error(self, error: str):
-        self.set_tags({ERROR: error})
+    def set_error(self, err: Exception):
+        self.set_tags({ERROR: err.__str__()})
 
     def set_status_code(self, code: int):
         with self.lock:
@@ -324,23 +324,14 @@ class Span(span.Span, SpanContext, ABC):
             if prompt.version:
                 self.set_tags({PROMPT_VERSION: prompt.version})
 
-    def set_prompt_baggage(self, prompt: Prompt):
-        if prompt.prompt_key:
-            self.set_baggage({PROMPT_KEY: prompt.prompt_key})
-            if prompt.version:
-                self.set_baggage({PROMPT_VERSION: prompt.version})
-
     def set_model_provider(self, model_provider: str):
         self.set_tags({MODEL_PROVIDER: model_provider})
-
-    def set_model_provider_baggage(self, model_provider: str):
-        self.set_baggage({MODEL_PROVIDER: model_provider})
 
     def set_model_name(self, model_name: str):
         self.set_tags({MODEL_NAME: model_name})
 
-    def set_model_name_baggage(self, model_name: str):
-        self.set_baggage({MODEL_NAME: model_name})
+    def set_model_call_options(self, model_call_options: Any):
+        self.set_tags({CALL_OPTIONS: model_call_options})
 
     def set_input_tokens(self, input_tokens: int):
         self.set_tags({INPUT_TOKENS: input_tokens})

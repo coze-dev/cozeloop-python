@@ -4,7 +4,7 @@
 from contextvars import ContextVar
 
 from .error import *
-from ...attribute.trace.span_key import INPUT_TOKENS, OUTPUT_TOKENS, TOKENS, INPUT, OUTPUT
+from ...spec.tracespce.span_key import INPUT_TOKENS, OUTPUT_TOKENS, TOKENS, INPUT, OUTPUT
 
 # default values for loop client
 # ComBaseURL = "https://api.coze.com"

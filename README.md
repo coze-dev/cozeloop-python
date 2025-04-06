@@ -1,9 +1,9 @@
-# Loop Python SDK
+# CozeLoop Python SDK
 English | [简体中文](README.zh_CN.md)
 
 ## Overview
 
-The Loop SDK is a Python client for interacting with [CozeLoop platform](https://loop.coze.cn).
+The CozeLoop SDK is a Python client for interacting with [CozeLoop platform](https://loop.coze.cn).
 Key features:
 - Report trace
 - Get and format prompt

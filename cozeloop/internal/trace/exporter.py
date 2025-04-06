@@ -9,7 +9,7 @@ from datetime import datetime
 
 from typing import Dict, List, Optional, Tuple, Callable, Any
 
-from cozeloop.attribute.trace.model import ModelInput, ModelMessagePart, ModelMessagePartType, ModelImageURL, ModelFileURL, ModelOutput
+from cozeloop.spec.tracespce import ModelInput, ModelMessagePart, ModelMessagePartType, ModelImageURL, ModelFileURL, ModelOutput
 from cozeloop.internal.consts import *
 from cozeloop.internal.httpclient import Client, BaseResponse
 from cozeloop.internal.trace.model.model import UploadType, Attachment, ObjectStorage

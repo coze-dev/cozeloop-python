@@ -2,7 +2,6 @@
 # SPDX-License-Identifier: MIT
 
 from .entities.prompt import Prompt, Message
-import cozeloop.entities
 from .logger import set_log_level, add_log_handler
 
 from .internal import __version__

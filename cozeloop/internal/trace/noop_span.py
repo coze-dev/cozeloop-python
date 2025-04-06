@@ -61,7 +61,7 @@ class NoopSpan(Span, ABC):
     def set_output(self, output: Any) -> None:
         pass
 
-    def set_error(self, err: str) -> None:
+    def set_error(self, err: Exception) -> None:
         pass
 
     def set_status_code(self, code: int) -> None:
@@ -88,19 +88,13 @@ class NoopSpan(Span, ABC):
     def set_prompt(self, prompt: Prompt) -> None:
         pass
 
-    def set_prompt_baggage(self, prompt: Prompt) -> None:
-        pass
-
     def set_model_provider(self, model_provider: str) -> None:
-        pass
-
-    def set_model_provider_baggage(self, model_provider: str) -> None:
         pass
 
     def set_model_name(self, model_name: str) -> None:
         pass
 
-    def set_model_name_baggage(self, model_name: str) -> None:
+    def set_model_call_options(self, call_options: Any) -> None:
         pass
 
     def set_input_tokens(self, input_tokens: int) -> None:

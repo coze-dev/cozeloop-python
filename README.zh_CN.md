@@ -1,9 +1,9 @@
-# Loop Python SDK
+# CozeLoop Python SDK
 [English](README.md) | 简体中文
 
 ## 概述
 
-Loop SDK 是一个用于与 [CozeLoop 平台](https://loop.coze.cn) 进行交互的 Python 客户端。
+CozeLoop SDK 是一个用于与 [CozeLoop 平台](https://loop.coze.cn) 进行交互的 Python 客户端。
 主要功能：
 - Trace上报
 - Prompt拉取
