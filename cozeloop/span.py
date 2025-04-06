@@ -45,7 +45,7 @@ class CommonSpanSetter(ABC):
         """
         Set input information, serialized into a JSON string.
         Key: `input`.
-        The recommended standard format is ModelInput of attribute package, but custom fields can also be used.
+        The recommended standard format is ModelInput of spec package, but custom fields can also be used.
         """
 
     @abstractmethod
@@ -53,11 +53,11 @@ class CommonSpanSetter(ABC):
         """
         Set output information, serialized into a JSON string.
         Key: `output`.
-        The recommended standard format is ModelOutput of attribute package, but custom fields can also be used.
+        The recommended standard format is ModelOutput of spec package, but custom fields can also be used.
         """
 
     @abstractmethod
-    def set_error(self, err: str) -> None:
+    def set_error(self, err: Exception) -> None:
         """
         Set error message.
         Key: `error`.
@@ -117,22 +117,10 @@ class CommonSpanSetter(ABC):
         """
 
     @abstractmethod
-    def set_prompt_baggage(self, prompt: Prompt) -> None:
-        """
-        Set the PromptKey and PromptVersion as baggage.
-        """
-
-    @abstractmethod
     def set_model_provider(self, model_provider: str) -> None:
         """
         Set the LLM provider, such as OpenAI.
         Key: `model_provider`.
-        """
-
-    @abstractmethod
-    def set_model_provider_baggage(self, model_provider: str) -> None:
-        """
-        Set the LLM provider as baggage.
         """
 
     @abstractmethod
@@ -143,9 +131,9 @@ class CommonSpanSetter(ABC):
         """
 
     @abstractmethod
-    def set_model_name_baggage(self, model_name: str) -> None:
+    def set_model_call_options(self, model_call_options: Any) -> None:
         """
-        Set the name of the LLM model as baggage.
+        Set the model call options
         """
 
     @abstractmethod

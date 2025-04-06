@@ -3,7 +3,7 @@
 
 from typing import List, Dict
 
-from cozeloop.attribute.trace.prompt import PromptInput, PromptOutput, ModelMessage, PromptArgument
+from cozeloop.spec.tracespce import PromptInput, PromptOutput, ModelMessage, PromptArgument
 from cozeloop.entities.prompt import (
     Prompt as EntityPrompt,
     Message as EntityMessage,
