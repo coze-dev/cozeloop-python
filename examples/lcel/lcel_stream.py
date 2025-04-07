@@ -3,6 +3,7 @@
 
 import logging
 import os
+import time
 
 from langchain.callbacks.tracers import ConsoleCallbackHandler
 from langchain_core.runnables import RunnableConfig
@@ -17,10 +18,10 @@ logger = logging.getLogger(__name__)
 def do_lcel_stream_demo():
     # Configure the parameters for the llm. The keys in os.environ are standard keys for Langchain and must be
     # followed. This is just a demo, and the connectivity of the llm needs to be ensured by the user.
-    os.environ['AZURE_OPENAI_API_KEY'] = 'xxx'  # need set a llm api key
-    os.environ['OPENAI_API_VERSION'] = '2024-05-13'  # llm version, see more: https://learn.microsoft.com/en-us/azure/ai-services/openai/reference#rest-api-versioning
-    os.environ['AZURE_OPENAI_ENDPOINT'] = 'https://xxx'  # llm endpoint
-    os.environ['AUZURE_DEPLOYMENT'] = 'gpt-4o-2024-05-13'
+    # os.environ['AZURE_OPENAI_API_KEY'] = 'xxx'  # need set a llm api key
+    # os.environ['OPENAI_API_VERSION'] = '2024-05-13'  # llm version, see more: https://learn.microsoft.com/en-us/azure/ai-services/openai/reference#rest-api-versioning
+    # os.environ['AZURE_OPENAI_ENDPOINT'] = 'https://xxx'  # llm endpoint
+    # os.environ['AUZURE_DEPLOYMENT'] = 'gpt-4o-2024-05-13'
 
     # Configure the Loop environment variables. This is just a demo, and the keys in os.environ are not for reference.
     # The specific implementation method is determined by the business side.
@@ -28,8 +29,8 @@ def do_lcel_stream_demo():
     # Set the following environment variables first (Assuming you are using a PAT token.).
     # COZELOOP_WORKSPACE_ID=your workspace id
     # COZELOOP_API_TOKEN=your token
-    os.environ['COZELOOP_API_TOKEN'] = 'your token'
-    os.environ['COZELOOP_WORKSPACE_ID'] = 'your workspace'
+    # os.environ['COZELOOP_API_TOKEN'] = 'your token'
+    # os.environ['COZELOOP_WORKSPACE_ID'] = 'your workspace'
 
     trace_callback_handler = LoopTracer.get_callback_handler()
     # init llm model
@@ -44,6 +45,9 @@ def do_lcel_stream_demo():
     ):
         chunks.append(chunk)
         print(chunk, end='', flush=True)
+
+    time.sleep(5) # async report, so sleep wait for report finish
+    print('\n====== model output start ======\n' + ''.join(chunks) + '\n====== model output finish ======\n')
 
 
 if __name__ == "__main__":

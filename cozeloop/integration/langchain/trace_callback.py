@@ -16,27 +16,34 @@ from langchain_core.messages import BaseMessage, AIMessageChunk
 from langchain_core.prompts import AIMessagePromptTemplate, HumanMessagePromptTemplate, SystemMessagePromptTemplate
 from langchain_core.outputs import ChatGenerationChunk, GenerationChunk
 
-from cozeloop import Span
+from cozeloop import Span, Client
 from cozeloop._client import get_default_client
 from cozeloop.integration.langchain.trace_model.llm_model import ModelTraceInput, ModelMeta, ModelTraceOutput, Message
 from cozeloop.integration.langchain.trace_model.prompt_template import PromptTraceOutput, Argument, PromptTraceInput
 from cozeloop.integration.langchain.trace_model.runtime import RuntimeInfo
 from cozeloop.integration.langchain.util import calc_token_usage, get_prompt_tag
 
+_trace_callback_client = None
 
 class LoopTracer:
     @classmethod
-    def get_callback_handler(cls):
+    def get_callback_handler(cls, client: Client = None):
         """
         Do not hold it for a long time, get a new callback_handler for each request.
         """
+        global _trace_callback_client
+        if client:
+            _trace_callback_client = client
+        else:
+            _trace_callback_client = get_default_client()
+
         return LoopTraceCallbackHandler()
 
 
 class LoopTraceCallbackHandler(BaseCallbackHandler):
     def __init__(self):
         super().__init__()
-        self._space_id = get_default_client().workspace_id()
+        self._space_id = _trace_callback_client.workspace_id
         self.run_map: Dict[str, Run] = {}
 
     def on_llm_start(self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any) -> Any:
@@ -230,7 +237,7 @@ class LoopTraceCallbackHandler(BaseCallbackHandler):
         if 'parent_run_id' in kwargs and kwargs['parent_run_id'] is not None:
             parent_span = self.run_map[str(kwargs['parent_run_id'])].span
         # new span
-        flow_span = get_default_client().start_span(span_name, span_type, child_of=parent_span)
+        flow_span = _trace_callback_client.start_span(span_name, span_type, child_of=parent_span)
         run_id = str(kwargs['run_id'])
         self.run_map[run_id] = Run(run_id, flow_span, span_type)
         # set default tags

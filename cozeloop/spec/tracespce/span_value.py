@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 # SpanType tag builtin values
+V_PROMPT_HUB_SPAN_TYPE = "prompt"
 V_PROMPT_SPAN_TYPE = "prompt"
 V_MODEL_SPAN_TYPE = "model"
 V_RETRIEVER_SPAN_TYPE = "retriever"
