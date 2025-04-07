@@ -9,12 +9,12 @@ from typing import Dict
 from cozeloop import internal
 
 # User agent components
-USER_AGENT_SDK = "loop-python"
+USER_AGENT_SDK = "cozeloop-python"
 USER_AGENT_LANG = "python"
 USER_AGENT_LANG_VERSION = platform.python_version()
 USER_AGENT_OS_NAME = platform.system().lower()
 USER_AGENT_OS_VERSION = os.getenv("OSVERSION", "unknown")
-SCENE = "loop"
+SCENE = "cozeloop"
 SOURCE = "openapi"
 
 USER_AGENT = f"{USER_AGENT_SDK}/{internal.__version__} {USER_AGENT_LANG}/{USER_AGENT_LANG_VERSION} {USER_AGENT_OS_NAME}/{USER_AGENT_OS_VERSION}"

@@ -61,8 +61,8 @@ EQUAL = "="
 COMMA = ","
 
 # On the basis of W3C, the "loop" prefix is added to avoid conflicts with other traces that use W3C.
-TRACE_CONTEXT_HEADER_PARENT = "X-Loop-Traceparent"
-TRACE_CONTEXT_HEADER_BAGGAGE = "X-Loop-Tracestate"
+TRACE_CONTEXT_HEADER_PARENT = "X-Cozeloop-Traceparent"
+TRACE_CONTEXT_HEADER_BAGGAGE = "X-Cozeloop-Tracestate"
 
 TRACE_PROMPT_HUB_SPAN_TYPE = "prompt_hub"
 TRACE_PROMPT_TEMPLATE_SPAN_TYPE = "prompt"

@@ -342,6 +342,13 @@ class Span(span.Span, SpanContext, ABC):
     def set_start_time_first_resp(self, start_time_first_resp: int):
         self.set_tags({START_TIME_FIRST_RESP: start_time_first_resp})
 
+    def set_runtime(self, runtime: Runtime) -> None:
+        r = Runtime(scene=V_SCENE_CUSTOM, library=runtime.library, library_version=runtime.library_version)
+        with self.lock:
+            if self.system_tag_map is None:
+                self.system_tag_map = {}
+            self.system_tag_map[RUNTIME_] = r
+
     def get_rectified_map(self, input_map: Dict[str, Any]) -> (Dict[str, Any], List[str], int):
         validate_map = {}
         cut_off_keys = []

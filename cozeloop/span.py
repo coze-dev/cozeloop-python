@@ -6,6 +6,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, Any
 from datetime import datetime
 from cozeloop.entities.prompt import Prompt
+from cozeloop.spec.tracespce import Runtime
 
 
 class SpanContext(ABC):
@@ -159,6 +160,12 @@ class CommonSpanSetter(ABC):
         Key: `start_time_first_resp`.
         """
 
+    @abstractmethod
+    def set_runtime(self, runtime: Runtime) -> None:
+        """
+        Set the runtime of the span. Only used for integration.
+        Key: `runtime`.
+        """
 
 class Span(CommonSpanSetter, SpanContext):
     """

@@ -2,36 +2,23 @@
 # SPDX-License-Identifier: MIT
 
 import json
-import platform as platform_pkg
 import importlib.metadata as metadata
-from typing import Optional
-from pydantic.dataclasses import dataclass
+from typing import Optional, Any
 
-from cozeloop.internal.version import VERSION
+from cozeloop.spec import tracespce
 
-@dataclass
-class RuntimeInfo:
-    language: Optional[str] = 'python'
-    library: Optional[str] = 'langchain'
-    runtime: Optional[str] = 'python'
-    runtime_version: Optional[str] = platform_pkg.python_version()
-    py_implementation: Optional[str] = platform_pkg.python_implementation()
-    loop_sdk_version: Optional[str] = None
-    langchain_version: Optional[str] = None
-    langchain_core_version: Optional[str] = None
 
-    def __post_init__(self):
+class RuntimeInfo(tracespce.Runtime):
+    language: Optional[str] = tracespce.V_LANG_PYTHON
+    library: Optional[str] = tracespce.V_LIB_LANGCHAIN
+
+    def model_post_init(self, context: Any) -> None:
         try:
             langchain_version = metadata.version('langchain')
         except metadata.PackageNotFoundError:
             langchain_version = ''
-        try:
-            langchain_core_version = metadata.version('langchain-core')
-        except metadata.PackageNotFoundError:
-            langchain_core_version = ''
-        self.loop_sdk_version = VERSION
-        self.langchain_version = langchain_version
-        self.langchain_core_version = langchain_core_version
+
+        self.library_version = langchain_version
 
     def to_json(self):
         return json.dumps(

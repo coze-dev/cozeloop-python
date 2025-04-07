@@ -33,6 +33,7 @@ V_LIB_LANGCHAIN = "langchain"
 V_SCENE_CUSTOM = "custom"          # user custom, it has the same meaning as blank.
 V_SCENE_PROMPT_HUB = "prompt_hub"      # get_prompt
 V_SCENE_PROMPT_TEMPLATE = "prompt_template"  # prompt_template
+V_SCENE_INTEGRATION = "integration"   # integration like langchain
 
 # Tag values for prompt input.
 V_PROMPT_ARG_SOURCE_INPUT = "input"

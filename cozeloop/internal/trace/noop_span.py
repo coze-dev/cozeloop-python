@@ -8,6 +8,7 @@ from typing import Dict, Any
 
 from cozeloop.entities.prompt import Prompt
 from cozeloop.span import Span
+from cozeloop.spec.tracespce import Runtime
 
 
 class NoopSpan(Span, ABC):
@@ -104,6 +105,9 @@ class NoopSpan(Span, ABC):
         pass
 
     def set_start_time_first_resp(self, start_time_first_resp: int) -> None:
+        pass
+
+    def set_runtime(self, runtime: Runtime) -> None:
         pass
 
     def __enter__(self):

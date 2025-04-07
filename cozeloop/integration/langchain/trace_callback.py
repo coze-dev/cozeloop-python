@@ -3,7 +3,6 @@
 
 from __future__ import annotations
 import json
-import threading
 import time
 import traceback
 from typing import List, Dict, Union, Any, Optional
@@ -23,7 +22,8 @@ from cozeloop.integration.langchain.trace_model.prompt_template import PromptTra
 from cozeloop.integration.langchain.trace_model.runtime import RuntimeInfo
 from cozeloop.integration.langchain.util import calc_token_usage, get_prompt_tag
 
-_trace_callback_client = None
+_trace_callback_client: Optional[Client] = None
+
 
 class LoopTracer:
     @classmethod
@@ -48,16 +48,15 @@ class LoopTraceCallbackHandler(BaseCallbackHandler):
 
     def on_llm_start(self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any) -> Any:
         span_tags = {}
+        span_name = serialized.get('name', 'unknown')
+
+        flow_span = self._new_flow_span(span_name, 'model', **kwargs)
         try:
             span_tags['input'] = ModelTraceInput([BaseMessage(type='', content=prompt) for prompt in prompts],
                                                  kwargs.get('invocation_params', {})).to_json()
-            span_name = serialized['name']
         except Exception as e:
-            span_name = 'unknown'
-            span_tags['internal_error'] = repr(e)
-            span_tags['internal_error_trace'] = traceback.format_exc()
+            flow_span.set_error(e)
         finally:
-            flow_span = self._new_flow_span(span_name, 'model', **kwargs)
             span_tags.update(_get_model_span_tags(**kwargs))
             self._set_span_tags(flow_span, span_tags)
             #  Store some pre-aspect information.
@@ -67,15 +66,14 @@ class LoopTraceCallbackHandler(BaseCallbackHandler):
 
     def on_chat_model_start(self, serialized: Dict[str, Any], messages: List[List[BaseMessage]], **kwargs: Any) -> Any:
         span_tags = {}
+        span_name = serialized.get('name', 'unknown')
+
+        flow_span = self._new_flow_span(span_name, 'model', **kwargs)
         try:
             span_tags['input'] = ModelTraceInput(messages, kwargs.get('invocation_params', {})).to_json()
-            span_name = serialized['name']
         except Exception as e:
-            span_name = 'unknown'
-            span_tags['internal_error'] = repr(e)
-            span_tags['internal_error_trace'] = traceback.format_exc()
+            flow_span.set_error(e)
         finally:
-            flow_span = self._new_flow_span(span_name, 'model', **kwargs)
             span_tags.update(_get_model_span_tags(**kwargs))
             self._set_span_tags(flow_span, span_tags)
             #  Store some pre-aspect information.
@@ -105,13 +103,8 @@ class LoopTraceCallbackHandler(BaseCallbackHandler):
             if run_info is not None and run_info.model_meta is not None:
                 model_name = run_info.model_meta.model_name
                 input_messages = run_info.model_meta.message
-                token_usage = {
-                    'input_tokens': calc_token_usage(input_messages, model_name),
-                    'output_tokens': calc_token_usage(response, model_name),
-                    'tokens': 0
-                }
-                token_usage['tokens'] = token_usage['input_tokens'] + token_usage['output_tokens']
-                self._set_span_tags(flow_span, token_usage, need_convert_tag_value=False)
+                flow_span.set_input_tokens(calc_token_usage(input_messages, model_name))
+                flow_span.set_output_tokens(calc_token_usage(response, model_name))
         # finish flow_span
         flow_span.finish()
 
@@ -139,24 +132,17 @@ class LoopTraceCallbackHandler(BaseCallbackHandler):
         if flow_span is None:
             span_name = '_Exception' if isinstance(error, Exception) else '_KeyboardInterrupt'
             flow_span = self._new_flow_span(span_name, 'chain_error', **kwargs)
-        flow_span.set_tags({'error': repr(error)})
+        flow_span.set_error(error)
         flow_span.set_tags({'error_trace': traceback.format_exc()})
-        flow_span.set_tags({'_status_code': -1})
         flow_span.finish()
 
     def on_tool_start(
             self, serialized: Dict[str, Any], input_str: str, **kwargs: Any
     ) -> Any:
         span_tags = {'input': input_str, **serialized}
-        try:
-            span_name = serialized['name']
-        except Exception as e:
-            span_name = 'unknown'
-            span_tags['internal_error'] = repr(e)
-            span_tags['internal_error_trace'] = traceback.format_exc()
-        finally:
-            flow_span = self._new_flow_span(span_name, 'tool', **kwargs)
-            self._set_span_tags(flow_span, span_tags)
+        span_name = serialized.get('name', 'unknown')
+        flow_span = self._new_flow_span(span_name, 'tool', **kwargs)
+        self._set_span_tags(flow_span, span_tags)
 
     def on_tool_end(self, output: str, **kwargs: Any) -> Any:
         flow_span = self._get_flow_span(**kwargs)
@@ -170,9 +156,8 @@ class LoopTraceCallbackHandler(BaseCallbackHandler):
         if flow_span is None:
             span_name = '_Exception' if isinstance(error, Exception) else '_KeyboardInterrupt'
             flow_span = self._new_flow_span(span_name, 'tool_error', **kwargs)
-        flow_span.set_tags({'error': repr(error)})
+        flow_span.set_error(error)
         flow_span.set_tags({'error_trace': traceback.format_exc()})
-        flow_span.set_tags({'_status_code': -1})
         flow_span.finish()
 
     def on_text(self, text: str, **kwargs: Any) -> Any:
@@ -241,9 +226,7 @@ class LoopTraceCallbackHandler(BaseCallbackHandler):
         run_id = str(kwargs['run_id'])
         self.run_map[run_id] = Run(run_id, flow_span, span_type)
         # set default tags
-        # flow_span.set_tags({'space_id': self._space_id})
-        flow_span.set_tags({'span_type': span_type})
-        flow_span.set_tags({'runtime': RuntimeInfo().to_json()})
+        flow_span.set_runtime(RuntimeInfo())
         return flow_span
 
     def _get_flow_span(self, **kwargs: Any) -> Span:
@@ -251,13 +234,6 @@ class LoopTraceCallbackHandler(BaseCallbackHandler):
         if run_id in self.run_map:
             return self.run_map[run_id].span
         return None
-
-    def _set_internal_error_span(self, error: Exception, **kwargs: Any) -> None:
-        flow_span = self._new_flow_span('internal_error', 'error', **kwargs)
-        flow_span.set_tags({'internal_error': error})
-        flow_span.set_tags({'internal_error_trace': traceback.format_exc()})
-        flow_span.set_tags({'_status_code': -1})
-        flow_span.finish()
 
     def _set_span_tags(self, flow_span: Span, tags: Dict[str, Any], need_convert_tag_value=True) -> None:
         for key, value in tags.items():

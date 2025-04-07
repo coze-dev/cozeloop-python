@@ -27,12 +27,8 @@ class LLMRunner:
         # modelSpan is child of rootSpan by ctx
         with self.client.start_span("llmCall", "model") as model_span:
             # Assuming llm is processing
-            # os.environ['AZURE_OPENAI_API_KEY'] = 'xxx'  # need set a llm api key
-            # os.environ[
-            #     'OPENAI_API_VERSION'] = '2024-05-13'  # llm version, see more: https://learn.microsoft.com/en-us/azure/ai-services/openai/reference#rest-api-versioning
-            # os.environ['AZURE_OPENAI_ENDPOINT'] = 'https://xxx'  # llm endpoint
-            # os.environ['AUZURE_DEPLOYMENT'] = 'gpt-4o-2024-05-13'
-            # output = AzureChatOpenAI(azure_deployment=os.environ['AUZURE_DEPLOYMENT']).invoke(input=input_data)
+            # output = ChatOpenAI().invoke(input=input_data)
+
 
             # mock resp
             time.sleep(1)
