@@ -8,13 +8,14 @@
 # available at https://github.com/open-telemetry/opentelemetry-python/blob/main/opentelemetry-sdk/src/opentelemetry/sdk/trace/export/__init__.py
 #
 # This modified file is released under the same license.
+import threading
 
 from cozeloop.internal.trace.exporter import *
 from cozeloop.internal.trace.queue_manager import BatchQueueManager, BatchQueueManagerOptions
 from cozeloop.internal.trace.span import Span
 
 DEFAULT_MAX_QUEUE_LENGTH = 2048
-DEFAULT_MAX_EXPORT_BATCH_LENGTH = 100
+DEFAULT_MAX_EXPORT_BATCH_LENGTH = 512
 DEFAULT_MAX_EXPORT_BATCH_BYTE_SIZE = 4 * 1024 * 1024  # 4MB
 MAX_RETRY_EXPORT_BATCH_LENGTH = 50
 DEFAULT_SCHEDULE_DELAY = 1000  # millisecond

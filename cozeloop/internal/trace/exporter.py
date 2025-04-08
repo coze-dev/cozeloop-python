@@ -2,11 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 import base64
-import json
 import logging
-import threading
-from datetime import datetime
-
 from typing import Dict, List, Optional, Tuple, Callable, Any
 
 from cozeloop.spec.tracespce import ModelInput, ModelMessagePart, ModelMessagePartType, ModelImageURL, ModelFileURL, ModelOutput
