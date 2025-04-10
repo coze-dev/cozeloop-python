@@ -137,6 +137,8 @@ class PromptProvider:
         return results
 
     def _validate_variable_values_type(self, variable_defs: List[VariableDef], variables: Dict[str, PromptVariable]):
+        if variable_defs is None:
+            return
         for var_def in variable_defs:
             if var_def is None:
                 continue
