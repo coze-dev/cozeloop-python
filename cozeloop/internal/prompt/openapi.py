@@ -120,12 +120,15 @@ class OpenAPIClient:
     def mpull_prompt(self, workspace_id: str, queries: List[PromptQuery]) -> List[PromptResult]:
         sorted_queries = sorted(queries, key=lambda x: (x.prompt_key, x.version))
 
+        all_prompts = []
         # If query count is less than or equal to the maximum batch size, execute directly
         if len(sorted_queries) <= MAX_PROMPT_QUERY_BATCH_SIZE:
-            return self._do_mpull_prompt(workspace_id, sorted_queries)
+            batch_results = self._do_mpull_prompt(workspace_id, sorted_queries)
+            if batch_results is not None:
+                all_prompts.extend(batch_results)
+            return all_prompts
 
         # Process large number of queries in batches
-        all_prompts = []
         for i in range(0, len(sorted_queries), MAX_PROMPT_QUERY_BATCH_SIZE):
             batch_queries = sorted_queries[i:i + MAX_PROMPT_QUERY_BATCH_SIZE]
             batch_results = self._do_mpull_prompt(workspace_id, batch_queries)
@@ -135,8 +138,10 @@ class OpenAPIClient:
         return all_prompts
 
     def _do_mpull_prompt(self, workspace_id: str, queries: List[PromptQuery]) -> Optional[List[PromptResult]]:
+        if not queries:
+            return None
         request = MPullPromptRequest(workspace_id=workspace_id, queries=queries)
         response = self.http_client.post(MPULL_PROMPT_PATH, MPullPromptResponse, request)
-        real_resp = MPullPromptResponse.parse_obj(response)
+        real_resp = MPullPromptResponse.model_validate(response)
         if real_resp.data is not None:
             return real_resp.data.items
