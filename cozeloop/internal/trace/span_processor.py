@@ -15,7 +15,7 @@ from cozeloop.internal.trace.queue_manager import BatchQueueManager, BatchQueueM
 from cozeloop.internal.trace.span import Span
 
 DEFAULT_MAX_QUEUE_LENGTH = 2048
-DEFAULT_MAX_EXPORT_BATCH_LENGTH = 512
+DEFAULT_MAX_EXPORT_BATCH_LENGTH = 100
 DEFAULT_MAX_EXPORT_BATCH_BYTE_SIZE = 4 * 1024 * 1024  # 4MB
 MAX_RETRY_EXPORT_BATCH_LENGTH = 50
 DEFAULT_SCHEDULE_DELAY = 1000  # millisecond

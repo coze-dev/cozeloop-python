@@ -105,6 +105,8 @@ class BatchQueueManager(QueueManager):
             while not self.queue.empty():
                 item = self.queue.get()
                 self.batch.append(item)
+                if len(self.batch) == self.options.max_export_batch_length:
+                    break
         logger.debug(
             f"{self.options.queue_name} queue _do_export_end, len: {len(self.batch)}")
         self._do_export_batch()

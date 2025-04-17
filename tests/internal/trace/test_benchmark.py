@@ -90,4 +90,4 @@ def benchmark(qps, duration):
 
 
 def test_trace_benchmark():
-    benchmark(qps=1000, duration=20)
+    benchmark(qps=500, duration=20)

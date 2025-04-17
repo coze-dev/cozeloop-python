@@ -3,6 +3,7 @@
 
 import base64
 import logging
+import time
 from typing import Dict, List, Optional, Tuple, Callable, Any
 
 from cozeloop.spec.tracespce import ModelInput, ModelMessagePart, ModelMessagePartType, ModelImageURL, ModelFileURL, ModelOutput
@@ -94,7 +95,7 @@ class UploadSpan(BaseModel):
     span_id: str
     parent_id: str
     trace_id: str
-    duration: int
+    duration_micros: int
     workspace_id: str
     span_name: str
     span_type: str
@@ -138,7 +139,7 @@ def transfer_to_upload_span_and_file(spans: List['Span']) -> (List[UploadSpan], 
             span_id=span.span_id,
             parent_id=span.parent_span_id,
             trace_id=span.trace_id,
-            duration=span.get_duration(),
+            duration_micros=span.get_duration(),
             workspace_id=span.get_space_id(),
             span_name=span.get_span_name(),
             span_type=span.get_span_type(),
