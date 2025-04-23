@@ -99,23 +99,18 @@ class BatchQueueManager(QueueManager):
         self._do_export_batch()
 
     def _do_export(self):
-        logger.debug(
-            f"{self.options.queue_name} queue _do_export, len: {len(self.batch)}")
         with self.batch_lock:
             while not self.queue.empty():
                 item = self.queue.get()
                 self.batch.append(item)
                 if len(self.batch) == self.options.max_export_batch_length:
                     break
-        logger.debug(
-            f"{self.options.queue_name} queue _do_export_end, len: {len(self.batch)}")
         self._do_export_batch()
 
     def _do_export_batch(self):
-        logger.debug(
-            f"{self.options.queue_name} queue _do_export_batch, len: {len(self.batch)}")
         with self.batch_lock:
             if self.batch:
+                logger.debug(f"{self.options.queue_name} queue out, batch len: {len(self.batch)}")
                 if self.export_func:
                     self.export_func({}, self.batch)
                 self.batch = []
@@ -130,7 +125,6 @@ class BatchQueueManager(QueueManager):
             if self.queue.qsize() >= self.options.max_queue_length:
                 with self.condition:
                     self.condition.notify()
-            logger.debug(f"{self.options.queue_name} enqueue, queue length: {self.queue.qsize()}")
         except queue.Full:
             logger.error(
                 f"{self.options.queue_name} queue is full, dropped span")
