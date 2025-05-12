@@ -109,6 +109,7 @@ class UploadSpan(BaseModel):
     tags_string: Dict[str, str]
     tags_long: Dict[str, int]
     tags_double: Dict[str, float]
+    tags_bool: Dict[str, bool]
 
 
 class UploadFile(BaseModel):
@@ -131,8 +132,8 @@ def transfer_to_upload_span_and_file(spans: List['Span']) -> (List[UploadSpan], 
         span_upload_files, put_content_map = parse_input_output(span)
         object_storage_byte = transfer_object_storage(span_upload_files)
 
-        tag_str_m, tag_long_m, tag_double_m = parse_tag(span.tag_map)
-        system_tag_str_m, system_tag_long_m, system_tag_double_m = parse_tag(span.system_tag_map)
+        tag_str_m, tag_long_m, tag_double_m, tag_bool_m = parse_tag(span.tag_map, False)
+        system_tag_str_m, system_tag_long_m, system_tag_double_m, _ = parse_tag(span.system_tag_map, True)
 
         res_span.append(UploadSpan(
             started_at_micros=int(span.start_time.timestamp() * 1_000_000),
@@ -152,20 +153,22 @@ def transfer_to_upload_span_and_file(spans: List['Span']) -> (List[UploadSpan], 
             system_tags_double=system_tag_double_m,
             tags_string=tag_str_m,
             tags_long=tag_long_m,
-            tags_double=tag_double_m
+            tags_double=tag_double_m,
+            tags_bool=tag_bool_m,
         ))
         res_file.extend(span_upload_files)
 
     return res_span, res_file
 
 
-def parse_tag(span_tag: Dict[str, Any]) -> (Dict[str, str], Dict[str, int], Dict[str, float]):
+def parse_tag(span_tag: Dict[str, Any], is_system_tag: bool) -> (Dict[str, str], Dict[str, int], Dict[str, float], Dict[str, bool]):
     if not span_tag:
         return {}, {}, {}
 
     v_str_map = {}
     v_long_map = {}
     v_double_map = {}
+    v_bool_map = {}
 
     for key, value in span_tag.items():
         if key in (INPUT, OUTPUT):
@@ -173,14 +176,19 @@ def parse_tag(span_tag: Dict[str, Any]) -> (Dict[str, str], Dict[str, int], Dict
 
         if isinstance(value, str):
             v_str_map[key] = value
-        elif isinstance(value, (int, bool)):
+        elif isinstance(value, bool):
+            if is_system_tag:
+                v_str_map[key] = str(value)
+            else:
+                v_bool_map[key] = bool(value)
+        elif isinstance(value, int):
             v_long_map[key] = int(value)
         elif isinstance(value, float):
             v_double_map[key] = float(value)
         else:
             v_str_map[key] = str(value)
 
-    return v_str_map, v_long_map, v_double_map
+    return v_str_map, v_long_map, v_double_map, v_bool_map
 
 
 
