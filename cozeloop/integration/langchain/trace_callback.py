@@ -406,7 +406,7 @@ def _convert_inputs(inputs: Any) -> Any:
             format_inputs['content'] = inputs.content
         return format_inputs
     if isinstance(inputs, BaseMessage):
-        message = Message(role=inputs.type, content=inputs.content)
+        message = Message(role=inputs.type, content=inputs.content, tool_calls=inputs.additional_kwargs.get('tool_calls', []))
         return message
     if isinstance(inputs, ChatPromptValue):
         return _convert_inputs(inputs.messages)
