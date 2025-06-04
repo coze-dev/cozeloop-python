@@ -258,6 +258,11 @@ class _LoopClient(Client):
         self._trace_provider.flush()
 
 
+def set_default_client(client: Client):
+    global _default_client
+    _default_client = client
+
+
 def get_default_client() -> Client:
     global _default_client
     if _default_client is None:

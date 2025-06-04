@@ -13,6 +13,7 @@ from .internal.consts.error import *
 from .client import Client
 from ._client import (
     new_client,
+    set_default_client,
     workspace_id,
     close,
     get_prompt,
