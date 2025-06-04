@@ -304,7 +304,7 @@ def _span_type_mapping(span_type: str) -> str:
     elif span_type == 'ReActSingleInputOutputParser':
         return 'parser'
     elif span_type == 'tool':
-        return 'plugin'
+        return 'tool'
     return span_type
 
 
