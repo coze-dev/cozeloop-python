@@ -181,6 +181,10 @@ class AsyncStream:
 
 
 if __name__ == '__main__':
+    # Set the following environment variables first (Assuming you are using a PAT token.).
+    # os.environ["COZELOOP_WORKSPACE_ID"] = "your workspace id"
+    # os.environ["COZELOOP_API_TOKEN"] = "your token"
+
     # set global default client, don't need to pass the client parameter when adding annotations subsequently.
     set_default_client(new_client())
 
