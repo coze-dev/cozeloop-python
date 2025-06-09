@@ -6,7 +6,7 @@ import logging
 import time
 from typing import Dict, List, Optional, Tuple, Callable, Any
 
-from cozeloop.spec.tracespce import ModelInput, ModelMessagePart, ModelMessagePartType, ModelImageURL, ModelFileURL, ModelOutput
+from cozeloop.spec.tracespec import ModelInput, ModelMessagePart, ModelMessagePartType, ModelImageURL, ModelFileURL, ModelOutput
 from cozeloop.internal.consts import *
 from cozeloop.internal.httpclient import Client, BaseResponse
 from cozeloop.internal.trace.model.model import UploadType, Attachment, ObjectStorage

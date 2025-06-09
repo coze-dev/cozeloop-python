@@ -8,7 +8,7 @@ from typing import Dict, Any
 
 from cozeloop.entities.prompt import Prompt
 from cozeloop.span import Span
-from cozeloop.spec.tracespce import Runtime
+from cozeloop.spec.tracespec import Runtime
 
 
 class NoopSpan(Span, ABC):

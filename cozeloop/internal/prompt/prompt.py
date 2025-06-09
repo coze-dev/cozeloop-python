@@ -7,7 +7,7 @@ from typing import Dict, Any, List, Optional
 from jinja2 import Environment, BaseLoader, Undefined
 from jinja2.utils import missing, object_type_repr
 
-from cozeloop.spec.tracespce import PROMPT_KEY, INPUT, PROMPT_VERSION, V_SCENE_PROMPT_TEMPLATE, V_SCENE_PROMPT_HUB
+from cozeloop.spec.tracespec import PROMPT_KEY, INPUT, PROMPT_VERSION, V_SCENE_PROMPT_TEMPLATE, V_SCENE_PROMPT_HUB
 from cozeloop.entities.prompt import (Prompt, Message, VariableDef, VariableType, TemplateType, Role,
                                       PromptVariable)
 from cozeloop.internal import consts

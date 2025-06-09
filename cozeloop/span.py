@@ -6,7 +6,7 @@ from abc import ABC, abstractmethod
 from typing import Dict, Any
 from datetime import datetime
 from cozeloop.entities.prompt import Prompt
-from cozeloop.spec.tracespce import Runtime
+from cozeloop.spec.tracespec import Runtime
 
 
 class SpanContext(ABC):

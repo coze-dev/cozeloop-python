@@ -10,7 +10,7 @@ import json
 import urllib.parse
 
 from cozeloop import span
-from cozeloop.spec.tracespce import (ModelInput, ModelOutput, ModelMessagePartType, ModelMessage, ModelMessagePart,
+from cozeloop.spec.tracespec import (ModelInput, ModelOutput, ModelMessagePartType, ModelMessage, ModelMessagePart,
                                      ModelImageURL, ModelFileURL, ModelChoice, Runtime, ERROR, PROMPT_KEY,
                                      PROMPT_VERSION, MODEL_PROVIDER, MODEL_NAME, RUNTIME_, CALL_OPTIONS,
                                      V_SCENE_CUSTOM, V_LANG_PYTHON)
