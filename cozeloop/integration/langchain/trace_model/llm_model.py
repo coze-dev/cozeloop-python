@@ -3,7 +3,7 @@
 
 import json
 import time
-from typing import List, Optional, Union
+from typing import List, Optional, Union, Dict, Any
 from pydantic.dataclasses import dataclass
 from langchain_core.messages import BaseMessage, ToolMessage, AIMessageChunk
 from langchain_core.outputs import Generation, ChatGeneration
@@ -14,7 +14,7 @@ class ToolFunction:
     name: Optional[str] = None
     description: Optional[str] = None
     parameters: Optional[dict] = None
-    arguments: Optional[dict] = None
+    arguments: Optional[Union[dict, str]] = None
 
 
 @dataclass
@@ -50,20 +50,31 @@ class Message:
     tool_calls: List[ToolCall] = None
 
     def __post_init__(self):
-        if self.role is not None and self.role == 'AIMessageChunk':
+        if self.role is not None and (self.role == 'AIMessageChunk' or self.role == 'ai'):
             self.role = 'assistant'
         parts: Optional[List[Parts]] = []
         if isinstance(self.content, List) and all(isinstance(x, dict) for x in self.content):
+            is_parts = False
             for each in self.content:
                 text = each.get('text', None)
                 url = each.get('url', each.get('image_url', {}).get('url', None))
+                if text is None and url is None:
+                    continue
+                is_parts = True
                 parts.append(Parts(type=each.get('type', ''), text=text, image_url=ImageUrl(url=url) if url is not None else None))
-            self.content = None
+            if is_parts:
+                self.content = None
+            else:
+                self.content = self.content.__str__()
         elif isinstance(self.content, dict):
+            is_part = False
             text = self.content.get('text', None)
             url = self.content.get('url', self.content.get('image_url', {}).get('url', None))
-            parts.append(Parts(type=self.content.get('type', ''), text=text, image_url=ImageUrl(url=url) if url is not None else None))
-            self.content = None
+            if text is not None or url is not None:
+                parts.append(Parts(type=self.content.get('type', ''), text=text, image_url=ImageUrl(url=url) if url is not None else None))
+                self.content = None
+            else:
+                self.content = self.content.__str__()
         elif isinstance(self.content, List) and all(type(x, Parts) for x in self.content):
             parts = self.content
             self.content = None

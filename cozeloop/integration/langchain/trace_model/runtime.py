@@ -5,12 +5,12 @@ import json
 import importlib.metadata as metadata
 from typing import Optional, Any
 
-from cozeloop.spec import tracespce
+from cozeloop.spec import tracespec
 
 
-class RuntimeInfo(tracespce.Runtime):
-    language: Optional[str] = tracespce.V_LANG_PYTHON
-    library: Optional[str] = tracespce.V_LIB_LANGCHAIN
+class RuntimeInfo(tracespec.Runtime):
+    language: Optional[str] = tracespec.V_LANG_PYTHON
+    library: Optional[str] = tracespec.V_LIB_LANGCHAIN
 
     def model_post_init(self, context: Any) -> None:
         try:

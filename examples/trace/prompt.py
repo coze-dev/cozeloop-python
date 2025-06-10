@@ -7,7 +7,7 @@ import json
 from cozeloop.internal.consts import TRACE_PROMPT_HUB_SPAN_NAME, TRACE_PROMPT_TEMPLATE_SPAN_NAME
 from cozeloop.entities.prompt import PromptTemplate, Prompt, Message, Role
 from cozeloop import new_client, set_log_level
-from cozeloop.spec.tracespce import ModelMessage, PromptInput, PromptArgument, V_PROMPT_HUB_SPAN_TYPE, PROMPT_KEY, \
+from cozeloop.spec.tracespec import ModelMessage, PromptInput, PromptArgument, V_PROMPT_HUB_SPAN_TYPE, PROMPT_KEY, \
     INPUT, PROMPT_VERSION, OUTPUT, V_PROMPT_SPAN_TYPE
 
 

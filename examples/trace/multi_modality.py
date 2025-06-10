@@ -9,7 +9,7 @@ import requests
 from typing import Any
 
 from cozeloop import new_client
-from cozeloop.spec.tracespce import ModelInput, ModelMessage, ModelMessagePart, ModelMessagePartType, ModelImageURL, ModelFileURL
+from cozeloop.spec.tracespec import ModelInput, ModelMessage, ModelMessagePart, ModelMessagePartType, ModelImageURL, ModelFileURL
 from cozeloop.logger import set_log_level
 
 logger = logging.getLogger(__name__)

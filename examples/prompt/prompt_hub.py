@@ -8,7 +8,7 @@ from typing import List
 import cozeloop
 from cozeloop import Message
 from cozeloop.entities.prompt import Role
-from cozeloop.spec.tracespce import CALL_OPTIONS, ModelCallOption, ModelMessage, ModelInput
+from cozeloop.spec.tracespec import CALL_OPTIONS, ModelCallOption, ModelMessage, ModelInput
 
 
 class LLMRunner:
