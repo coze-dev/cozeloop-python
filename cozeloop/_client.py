@@ -260,7 +260,14 @@ class _LoopClient(Client):
 
 def set_default_client(client: Client):
     global _default_client
-    _default_client = client
+    with _client_lock:
+        if _default_client:
+            temp_client = _default_client
+            _default_client = client
+            if temp_client != client:
+                temp_client.close()
+        else:
+            _default_client = client
 
 
 def get_default_client() -> Client:

@@ -1,11 +1,10 @@
-import asyncio
-import logging
-from time import sleep
+# Copyright (c) 2025 Bytedance Ltd. and/or its affiliates
+# SPDX-License-Identifier: MIT
 from typing import Optional, Callable, Any, overload, Dict, Generic, Iterator, TypeVar, List, cast, AsyncIterator
 from functools import wraps
 
 from cozeloop import Client, Span, start_span
-from cozeloop.decorator.utils import is_async_func, is_gen_func, is_async_gen_func
+from cozeloop.decorator.utils import is_async_func, is_gen_func, is_async_gen_func, is_class_func
 
 S = TypeVar("S")
 
@@ -31,14 +30,38 @@ class CozeLoopDecorator:
             name: Optional[str] = None,
             span_type: Optional[str] = None,
             tags: Optional[Dict[str, Any]] = None,
+            baggage: Optional[Dict[str, str]] = None,
             client: Optional[Client] = None,
             process_inputs: Optional[Callable[[dict], Any]] = None,
             process_outputs: Optional[Callable[[Any], Any]] = None,
             process_iterator_outputs: Optional[Callable[[Any], Any]] = None,
     ) -> Callable:
+        """
+        Decorator to add CozeLoop tracing to a function.
+
+        :param func: The function to be decorated.
+        :param name: The name of the Span. Defaults to the function name.
+        :param span_type: The span_type of the Span. Defaults to 'custom'.
+        :param tags: Set tags for the Span. The Priority is higher than the default tags.
+        :param baggage: Set baggage for the Span. The Priority is higher than the default baggage.
+                        baggage can cover tag of sample key, and baggage will pass to child span automatically.
+        :param client: The Client to be used. Defaults to the default Client.
+        :param process_inputs: process inputs result before report trace. The input is a dictionary with
+                               the format: {"args": args, "kwargs": kwargs}
+        :param process_outputs: process outputs result before report trace. For regular functions, the input
+                                is Any type (the original function result). For generator functions, after being fully
+                                consumed or closed, the result will be packaged into a List. If the generator is not
+                                fully consumed or closed, it's considered unfinished, the result will be empty, and
+                                no output will be reported.
+        :param process_iterator_outputs: For functions that return iterators, you should define it to handle the
+                                iterator results before reporting them to trace. The Input is List (since it's an
+                                iterator, the result will be packaged into a List after being fully consumed).
+        :return: Callable: The decorated function.
+        """
 
         span_type = span_type or 'custom'
         tags = tags or None
+        baggage = baggage or None
         client = client or None
         process_inputs = process_inputs or None
         process_outputs = process_outputs or None
@@ -53,6 +76,8 @@ class CozeLoopDecorator:
 
                 res = None
                 try:
+                    if baggage:
+                        span.set_baggage(baggage)
                     res = func(*args, **kwargs)
                     output = res
                     if process_outputs:
@@ -64,6 +89,9 @@ class CozeLoopDecorator:
                 except Exception as e:
                     span.set_error(e)
                 finally:
+                    # ignore self
+                    if len(args) > 0 and is_class_func(func):
+                        args = args[1:]
                     input = {"args": args, "kwargs": kwargs}
                     if process_inputs:
                         input = process_inputs(input)
@@ -81,6 +109,8 @@ class CozeLoopDecorator:
 
                 res = None
                 try:
+                    if baggage:
+                        span.set_baggage(baggage)
                     res = await func(*args, **kwargs)
                     output = res
                     if process_outputs:
@@ -96,6 +126,9 @@ class CozeLoopDecorator:
                     else:
                         span.set_error(e)
                 finally:
+                    # ignore self
+                    if len(args) > 0 and is_class_func(func):
+                        args = args[1:]
                     input = {"args": args, "kwargs": kwargs}
                     if process_inputs:
                         input = process_inputs(input)
@@ -112,6 +145,8 @@ class CozeLoopDecorator:
                 span = client.start_span(_name, span_type) if client else start_span(_name, span_type)
 
                 try:
+                    if baggage:
+                        span.set_baggage(baggage)
                     gen = func(*args, **kwargs)
                     items = []
                     try:
@@ -128,6 +163,9 @@ class CozeLoopDecorator:
                 except Exception as e:
                     span.set_error(e)
                 finally:
+                    # ignore self
+                    if len(args) > 0 and is_class_func(func):
+                        args = args[1:]
                     input = {"args": args, "kwargs": kwargs}
                     if process_inputs:
                         input = process_inputs(input)
@@ -141,6 +179,8 @@ class CozeLoopDecorator:
                 span = client.start_span(_name, span_type) if client else start_span(_name, span_type)
 
                 try:
+                    if baggage:
+                        span.set_baggage(baggage)
                     gen = func(*args, **kwargs)
                     items = []
                     try:
@@ -161,6 +201,9 @@ class CozeLoopDecorator:
                     else:
                         span.set_error(e)
                 finally:
+                    # ignore self
+                    if len(args) > 0 and is_class_func(func):
+                        args = args[1:]
                     input = {"args": args, "kwargs": kwargs}
                     if process_inputs:
                         input = process_inputs(input)
@@ -175,6 +218,8 @@ class CozeLoopDecorator:
 
                 res = None
                 try:
+                    if baggage:
+                        span.set_baggage(baggage)
                     res = func(*args, **kwargs)
                     output = res
                     if hasattr(output, "__iter__"):
@@ -188,6 +233,9 @@ class CozeLoopDecorator:
                 except Exception as e:
                     span.set_error(e)
                 finally:
+                    # ignore self
+                    if len(args) > 0 and is_class_func(func):
+                        args = args[1:]
                     input = {"args": args, "kwargs": kwargs}
                     if process_inputs:
                         input = process_inputs(input)
@@ -204,6 +252,8 @@ class CozeLoopDecorator:
 
                 res = None
                 try:
+                    if baggage:
+                        span.set_baggage(baggage)
                     res = await func(*args, **kwargs)
                     output = res
                     if hasattr(output, "__aiter__"):
@@ -221,6 +271,9 @@ class CozeLoopDecorator:
                     else:
                         span.set_error(e)
                 finally:
+                    # ignore self
+                    if len(args) > 0 and is_class_func(func):
+                        args = args[1:]
                     input = {"args": args, "kwargs": kwargs}
                     if process_inputs:
                         input = process_inputs(input)
