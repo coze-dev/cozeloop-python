@@ -162,7 +162,7 @@ class PromptProvider:
             variables: Dict[str, PromptVariable]
     ) -> List[Message]:
         results = []
-        variable_def_map = {var_def.key: var_def for var_def in variable_defs if var_def}
+        variable_def_map = {var_def.key: var_def for var_def in variable_defs if var_def} if variable_defs else {}
 
         for message in messages:
             if message is None:

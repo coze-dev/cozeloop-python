@@ -150,7 +150,8 @@ class Span(span.Span, SpanContext, ABC):
             if isinstance(input_data, ModelInput):
                 m_content = input_data
                 for message in input_data.messages:
-                    message_parts.extend(message.parts)
+                    if message.parts:
+                        message_parts.extend(message.parts)
 
             is_multi_modality = self.parse_model_message_parts(message_parts)
 
