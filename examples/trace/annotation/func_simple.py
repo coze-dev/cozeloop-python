@@ -5,7 +5,7 @@ import logging
 import os
 import time
 
-from cozeloop import new_client, flush
+from cozeloop import new_client, flush, get_span_from_context
 from cozeloop.decorator import observe
 from cozeloop.logger import set_log_level
 
@@ -45,13 +45,13 @@ class LLMRunner:
                                          # the default client will be used automatically.
     name="root_span",                    # The name of the Span. Defaults to the function name.
     span_type="main_span",               # The span_type of the Span. Defaults to 'custom'.
-    tags={"mode": 'simple', "node_id": 6076665},  # Set custom tag. The Priority is higher than the default tags.
-    baggage={"product_id": "123456654321"},  # Set custom baggage. baggage can cover tag of sample key, and will pass to child span automatically.
+    tags={"mode": 'simple', "node_id": 6076665},  # Set static custom tag. The Priority is higher than the default tags.
+    baggage={"product_id": "123456654321"},  # Set static custom baggage. baggage can cover tag of sample key, and will pass to child span automatically.
 )
 def do_simple_demo():
-    # Set the following environment variables first (Assuming you are using a PAT token.).
-    # os.environ["COZELOOP_WORKSPACE_ID"] = "your workspace id"
-    # os.environ["COZELOOP_API_TOKEN"] = "your token"
+    # Dynamic set tag or baggage in runtime
+    get_span_from_context().set_baggage({"thread_id": "my-thread-id"})
+    get_span_from_context().set_tags({"sale_id": "my-sale-id"})
 
     # 0. new client
     set_log_level(logging.INFO)
@@ -66,6 +66,10 @@ def do_simple_demo():
 
 
 if __name__ == "__main__":
+    # Set the following environment variables first (Assuming you are using a PAT token.).
+    # os.environ["COZELOOP_WORKSPACE_ID"] = "your workspace id"
+    # os.environ["COZELOOP_API_TOKEN"] = "your token"
+
     do_simple_demo()
 
     # flush all trace data before server exit.
