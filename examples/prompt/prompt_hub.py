@@ -11,6 +11,19 @@ from cozeloop.entities.prompt import Role
 from cozeloop.spec.tracespec import CALL_OPTIONS, ModelCallOption, ModelMessage, ModelInput
 
 
+def convert_model_input(messages: List[Message]) -> ModelInput:
+    model_messages = []
+    for message in messages:
+        model_messages.append(ModelMessage(
+            role=str(message.role),
+            content=message.content if message.content is not None else ""
+        ))
+
+    return ModelInput(
+        messages=model_messages
+    )
+
+
 class LLMRunner:
     def __init__(self, client):
         self.client = client
@@ -49,14 +62,14 @@ class LLMRunner:
             span.set_output_tokens(output_token)
             # set tag key: `model_name`, e.g., gpt-4-1106-preview, etc.
             span.set_model_name("gpt-4-1106-preview")
-            span.set_tags(CALL_OPTIONS, ModelCallOption(
+            span.set_tags({CALL_OPTIONS: ModelCallOption(
                 temperature=0.5,
                 top_p=0.5,
                 top_k=10,
                 presence_penalty=0.5,
                 frequency_penalty=0.5,
                 max_tokens=1024,
-            ))
+            )})
 
             return None
         except Exception as e:
@@ -124,16 +137,3 @@ if __name__ == '__main__':
     # Note that flush will block and wait for the report to complete, and it may cause frequent reporting,
     # affecting performance.
     client.flush()
-
-
-def convert_model_input(messages: List[Message]) -> ModelInput:
-    model_messages = []
-    for message in messages:
-        model_messages.append(ModelMessage(
-            role=str(message.role),
-            content=message.content if message.content is not None else ""
-        ))
-
-    return ModelInput(
-        messages=model_messages
-    )
