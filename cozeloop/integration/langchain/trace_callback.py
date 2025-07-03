@@ -7,7 +7,7 @@ import time
 import traceback
 from typing import List, Dict, Union, Any, Optional
 
-from pydantic import Field
+from pydantic import Field, BaseModel
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.schema import AgentFinish, AgentAction, LLMResult
 from langchain_core.prompt_values import PromptValue, ChatPromptValue
@@ -93,38 +93,53 @@ class LoopTraceCallbackHandler(BaseCallbackHandler):
 
     def on_llm_end(self, response: LLMResult, **kwargs: Any) -> Any:
         flow_span = self._get_flow_span(**kwargs)
-        # set output span_tag
-        flow_span.set_tags({'output': ModelTraceOutput(response.generations).to_json()})
+        try:
+            # set output span_tag
+            flow_span.set_tags({'output': ModelTraceOutput(response.generations).to_json()})
+        except Exception as e:
+            flow_span.set_error(e)
         # calculate token usage，and set span_tag
-        if response.llm_output is not None and 'token_usage' in response.llm_output:
+        if response.llm_output is not None and 'token_usage' in response.llm_output and response.llm_output['token_usage']:
             self._set_span_tags(flow_span, response.llm_output['token_usage'], need_convert_tag_value=False)
         else:
-            run_info = self.run_map[str(kwargs['run_id'])]
-            if run_info is not None and run_info.model_meta is not None:
-                model_name = run_info.model_meta.model_name
-                input_messages = run_info.model_meta.message
-                flow_span.set_input_tokens(calc_token_usage(input_messages, model_name))
-                flow_span.set_output_tokens(calc_token_usage(response, model_name))
+            try:
+                run_info = self.run_map[str(kwargs['run_id'])]
+                if run_info is not None and run_info.model_meta is not None:
+                    model_name = run_info.model_meta.model_name
+                    input_messages = run_info.model_meta.message
+                    flow_span.set_input_tokens(calc_token_usage(input_messages, model_name))
+                    flow_span.set_output_tokens(calc_token_usage(response, model_name))
+            except Exception as e:
+                flow_span.set_error(e)
         # finish flow_span
         flow_span.finish()
 
     def on_chain_start(self, serialized: Dict[str, Any], inputs: Dict[str, Any], **kwargs: Any) -> Any:
-        if kwargs.get('run_type', '') == 'prompt' or kwargs.get('name', '') == 'ChatPromptTemplate':
-            self._on_prompt_start(serialized, inputs, **kwargs)
-        else:
-            flow_span = self._new_flow_span(kwargs['name'], kwargs['name'], **kwargs)
-            flow_span.set_tags({'input': _convert_2_json(inputs)})
+        flow_span = None
+        try:
+            if kwargs.get('run_type', '') == 'prompt' or kwargs.get('name', '') == 'ChatPromptTemplate':
+                flow_span = self._new_flow_span(kwargs['name'], kwargs['name'], **kwargs)
+                self._on_prompt_start(flow_span, serialized, inputs, **kwargs)
+            else:
+                flow_span = self._new_flow_span(kwargs['name'], kwargs['name'], **kwargs)
+                flow_span.set_tags({'input': _convert_2_json(inputs)})
+        except Exception as e:
+            if flow_span is not None:
+                flow_span.set_error(e)
 
     def on_chain_end(self, outputs: Union[Dict[str, Any], Any], **kwargs: Any) -> Any:
         flow_span = self.run_map[str(kwargs['run_id'])].span
-        if self.run_map[str(kwargs['run_id'])].span_type == 'prompt' and isinstance(outputs, ChatPromptValue):
-            messages: List[Message] = []
-            for message in outputs.messages:
-                messages.append(Message(role=message.type, content=message.content))
-            trace_output = PromptTraceOutput(prompts=messages)
-            flow_span.set_tags({'output': trace_output.to_json()})
-        else:
-            flow_span.set_tags({'output': _convert_2_json(outputs)})
+        try:
+            if self.run_map[str(kwargs['run_id'])].span_type == 'prompt' and isinstance(outputs, ChatPromptValue):
+                messages: List[Message] = []
+                for message in outputs.messages:
+                    messages.append(Message(role=message.type, content=message.content))
+                trace_output = PromptTraceOutput(prompts=messages)
+                flow_span.set_tags({'output': trace_output.to_json()})
+            else:
+                flow_span.set_tags({'output': _convert_2_json(outputs)})
+        except Exception as e:
+            flow_span.set_error(e)
         flow_span.finish()
 
     def on_chain_error(self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any) -> Any:
@@ -146,7 +161,10 @@ class LoopTraceCallbackHandler(BaseCallbackHandler):
 
     def on_tool_end(self, output: str, **kwargs: Any) -> Any:
         flow_span = self._get_flow_span(**kwargs)
-        flow_span.set_tags({'output': _convert_2_json(output)})
+        try:
+            flow_span.set_tags({'output': _convert_2_json(output)})
+        except Exception as e:
+            flow_span.set_error(e)
         flow_span.finish()
 
     def on_tool_error(
@@ -169,8 +187,7 @@ class LoopTraceCallbackHandler(BaseCallbackHandler):
     def on_agent_finish(self, finish: AgentFinish, **kwargs: Any) -> Any:
         return
 
-    def _on_prompt_start(self, serialized: Dict[str, Any], inputs: (Dict[str, Any], str), **kwargs: Any) -> None:
-        flow_span = self._new_flow_span(serialized['name'], 'prompt', **kwargs)
+    def _on_prompt_start(self, flow_span, serialized: Dict[str, Any], inputs: (Dict[str, Any], str), **kwargs: Any) -> None:
         # get inputs
         params: List[Argument] = []
         if isinstance(inputs, str):
@@ -219,7 +236,7 @@ class LoopTraceCallbackHandler(BaseCallbackHandler):
         span_type = _span_type_mapping(span_type)
         # set parent span
         parent_span: Span = None
-        if 'parent_run_id' in kwargs and kwargs['parent_run_id'] is not None:
+        if 'parent_run_id' in kwargs and kwargs['parent_run_id'] is not None and str(kwargs['parent_run_id']) in self.run_map:
             parent_span = self.run_map[str(kwargs['parent_run_id'])].span
         # new span
         flow_span = _trace_callback_client.start_span(span_name, span_type, child_of=parent_span)
@@ -236,6 +253,8 @@ class LoopTraceCallbackHandler(BaseCallbackHandler):
         return None
 
     def _set_span_tags(self, flow_span: Span, tags: Dict[str, Any], need_convert_tag_value=True) -> None:
+        if tags is None:
+            return
         for key, value in tags.items():
             report_value = value
             if need_convert_tag_value:
@@ -369,13 +388,16 @@ def _get_model_span_tags(**kwargs: Any) -> dict:
 
 
 def _convert_2_json(inputs: Any) -> str:
-    format_input = _convert_inputs(inputs)
-    if isinstance(format_input, str):
-        return format_input
-    else:
-        return json.dumps(format_input,
-                          default=lambda o: dict((key, value) for key, value in o.__dict__.items() if value),
-                          ensure_ascii=False)
+    try:
+        format_input = _convert_inputs(inputs)
+        if isinstance(format_input, str):
+            return format_input
+        else:
+            return json.dumps(format_input,
+                              default=lambda o: dict((key, value) for key, value in o.__dict__.items() if value),
+                              ensure_ascii=False)
+    except Exception as e:
+        return repr(e)
 
 
 def _convert_inputs(inputs: Any) -> Any:
@@ -388,7 +410,7 @@ def _convert_inputs(inputs: Any) -> Any:
         for key, val in inputs.items():
             format_inputs[key] = _convert_inputs(val)
         return format_inputs
-    if isinstance(inputs, list):
+    if isinstance(inputs, list) or isinstance(inputs, set):
         format_inputs = []
         for each in inputs:
             format_inputs.append(_convert_inputs(each))
@@ -422,6 +444,8 @@ def _convert_inputs(inputs: Any) -> Any:
         return format_inputs
     if isinstance(inputs, PromptValue):
         return _convert_inputs(inputs.to_messages())
+    if isinstance(inputs, BaseModel):
+        return inputs.model_dump_json()
     if inputs is None:
         return 'None'
     return 'type of inputs is not supported'
