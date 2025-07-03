@@ -88,6 +88,7 @@ class CozeLoopDecorator:
                     pass
                 except Exception as e:
                     span.set_error(e)
+                    raise e
                 finally:
                     # ignore self
                     if len(args) > 0 and is_class_func(func):
@@ -125,6 +126,7 @@ class CozeLoopDecorator:
                         pass
                     else:
                         span.set_error(e)
+                        raise e
                 finally:
                     # ignore self
                     if len(args) > 0 and is_class_func(func):
@@ -162,6 +164,7 @@ class CozeLoopDecorator:
 
                 except Exception as e:
                     span.set_error(e)
+                    raise e
                 finally:
                     # ignore self
                     if len(args) > 0 and is_class_func(func):
@@ -200,6 +203,7 @@ class CozeLoopDecorator:
                         pass
                     else:
                         span.set_error(e)
+                        raise e
                 finally:
                     # ignore self
                     if len(args) > 0 and is_class_func(func):
@@ -232,6 +236,7 @@ class CozeLoopDecorator:
                     pass
                 except Exception as e:
                     span.set_error(e)
+                    raise e
                 finally:
                     # ignore self
                     if len(args) > 0 and is_class_func(func):
@@ -270,6 +275,7 @@ class CozeLoopDecorator:
                         pass
                     else:
                         span.set_error(e)
+                        raise e
                 finally:
                     # ignore self
                     if len(args) > 0 and is_class_func(func):
