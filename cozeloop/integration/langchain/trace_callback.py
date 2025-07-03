@@ -445,7 +445,7 @@ def _convert_inputs(inputs: Any) -> Any:
     if isinstance(inputs, PromptValue):
         return _convert_inputs(inputs.to_messages())
     if isinstance(inputs, BaseModel):
-        return inputs.model_dump()
+        return inputs.model_dump_json()
     if inputs is None:
         return 'None'
     return 'type of inputs is not supported'
