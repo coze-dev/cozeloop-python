@@ -13,7 +13,7 @@ CozeLoop SDK 是一个用于与 [CozeLoop 平台](https://loop.coze.cn) 进行�
 
 ## 安装
 
-`go get github.com/coze-dev/loop-go`
+`pip install CozeLoop`
 
 ## 用法
 
