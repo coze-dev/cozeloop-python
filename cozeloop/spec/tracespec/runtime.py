@@ -4,6 +4,7 @@
 from typing import Optional
 from pydantic import BaseModel
 
+
 class Runtime(BaseModel):
     language: Optional[str] = None # from enum VLang in span_value.py
     library: Optional[str] = None  # integration library, from enum VLib in span_value.py
@@ -12,3 +13,6 @@ class Runtime(BaseModel):
     # Dependency Versions.
     library_version: Optional[str] = None
     loop_sdk_version: Optional[str] = None
+
+    #   Extra info.
+    extra: Optional[dict] = None

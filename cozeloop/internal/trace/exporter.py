@@ -18,10 +18,10 @@ from cozeloop.internal.utils.validation import is_valid_url
 logger = logging.getLogger(__name__)
 
 class Exporter:
-    def export_spans(self, ctx: dict, spans: List['UploadSpan']) -> bool:
+    def export_spans(self, ctx: dict, spans: List['UploadSpan']):
         raise NotImplementedError
 
-    def export_files(self, ctx: dict, files: List['UploadFile']) -> bool:
+    def export_files(self, ctx: dict, files: List['UploadFile']):
         raise NotImplementedError
 
 
@@ -35,12 +35,26 @@ FILE_TYPE_FILE = "file"
 PATH_INGEST_TRACE = "/v1/loop/traces/ingest"
 PATH_UPLOAD_FILE = "/v1/loop/files/upload"
 
+class UploadPath:
+    def __init__(
+            self,
+            span_upload_path: str,
+            file_upload_path: str,
+    ):
+        self.span_upload_path = span_upload_path
+        self.file_upload_path = file_upload_path
+
 
 class SpanExporter(Exporter):
-    def __init__(self, client: Client):
+    def __init__(
+            self,
+            client: Client,
+            upload_path: UploadPath,
+    ):
         self.client = client
+        self.upload_path = upload_path
 
-    def export_files(self, ctx: dict, files: List['UploadFile']) -> bool:
+    def export_files(self, ctx: dict, files: List['UploadFile']):
         for file in files:
             if not file:
                 continue
@@ -48,42 +62,34 @@ class SpanExporter(Exporter):
             logger.debug(f"uploadFile start, file name: {file.name}")
             try:
                 resp = self.client.upload_file(
-                    PATH_UPLOAD_FILE,
+                    self.upload_path.file_upload_path,
                     BaseResponse,
                     file.data,
                     file.tos_key,
                     {"workspace_id": file.space_id},
                 )
                 if resp.code != 0: # todo: some err code do not need retry
-                    logger.error(f"export files[{file.tos_key}] fail, code:[{resp.code}], msg:[{resp.msg}]")
-                    return False
+                    raise Exception(f"code:[{resp.code}], msg:[{resp.msg}]")
             except Exception as e:
-                logger.error(f"export files[{file.tos_key}] fail, err:[{e}], file.name:[{file.name}]")
-                return False
+                raise Exception(f"export files[{file.tos_key}] fail, err:[{e}], file.name:[{file.name}]")
 
             logger.debug(f"uploadFile end, file name: {file.name}")
-        return True
 
-    def export_spans(self, ctx: dict, spans: List['UploadSpan']) -> bool:
-        logger.debug(f"export spans, spans count: {len(spans)}")
 
-        if not spans:
-            return True
+    def export_spans(self, ctx: dict, spans: List['UploadSpan']):
+        if not spans or len(spans) == 0:
+            return
 
         try:
             resp = self.client.post(
-                PATH_INGEST_TRACE,
+                self.upload_path.span_upload_path,
                 BaseResponse,
                 UploadSpanData(spans=spans),
             )
             if resp.code != 0: # todo: some err code do not need retry
-                logger.error(f"export spans fail, code:[{resp.code}], msg:[{resp.msg}]")
-                return False
+                raise Exception(f"code:[{resp.code}], msg:[{resp.msg}]")
         except Exception as e:
-            logger.error(f"export spans fail, err:[{e}]")
-            return False
-
-        return True
+            raise Exception(f"export spans fail, err:[{e}]")
 
 
 class UploadSpanData(BaseModel):
@@ -92,10 +98,12 @@ class UploadSpanData(BaseModel):
 
 class UploadSpan(BaseModel):
     started_at_micros: int
+    log_id: str
     span_id: str
     parent_id: str
     trace_id: str
     duration_micros: int
+    service_name: str
     workspace_id: str
     span_name: str
     span_type: str
@@ -137,10 +145,12 @@ def transfer_to_upload_span_and_file(spans: List['Span']) -> (List[UploadSpan], 
 
         res_span.append(UploadSpan(
             started_at_micros=int(span.start_time.timestamp() * 1_000_000),
+            log_id=span.log_id,
             span_id=span.span_id,
             parent_id=span.parent_span_id,
             trace_id=span.trace_id,
             duration_micros=span.get_duration(),
+            service_name=span.service_name,
             workspace_id=span.get_space_id(),
             span_name=span.get_span_name(),
             span_type=span.get_span_type(),

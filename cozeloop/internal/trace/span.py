@@ -3,13 +3,14 @@
 
 import logging
 from abc import ABC
-from typing import Dict, Any, List
+from typing import Dict, Any, List, Optional
 from datetime import datetime
 import threading
 import json
 import urllib.parse
 
 from cozeloop import span
+from cozeloop.internal.trace.model.model import TagTruncateConf
 from cozeloop.spec.tracespec import (ModelInput, ModelOutput, ModelMessagePartType, ModelMessage, ModelMessagePart,
                                      ModelImageURL, ModelFileURL, ModelChoice, Runtime, ERROR, PROMPT_KEY,
                                      PROMPT_VERSION, MODEL_PROVIDER, MODEL_NAME, RUNTIME_, CALL_OPTIONS,
@@ -33,7 +34,7 @@ class SpanContext(span.SpanContext):
             baggage = {}
         self.trace_id = trace_id
         self.span_id = span_id
-        self.baggage = baggage
+        self._baggage = baggage
 
     def trace_id(self) -> str:
         return self.trace_id
@@ -41,11 +42,16 @@ class SpanContext(span.SpanContext):
     def span_id(self) -> str:
         return self.span_id
 
+    @property
     def baggage(self) -> Dict[str, str]:
-        return self.baggage
+        return self._baggage
+
+    @baggage.setter
+    def baggage(self, value: Dict[str, str]):
+        self._baggage = value
 
     def set_baggage_item(self, key: str, value: str):
-        self.baggage[key] = value
+        self._baggage[key] = value
 
 
 class Span(span.Span, SpanContext, ABC):
@@ -54,10 +60,18 @@ class Span(span.Span, SpanContext, ABC):
                  baggage: Dict[str, str] = None, tag_map: Dict[str, Any] = None, system_tag_map: Dict[str, Any] = None,
                  status_code: int = 0, multi_modality_key_map: Dict[str, Any] = None,
                  ultra_large_report: bool = False, span_processor: Any = None, flags: int = 0,
-                 is_finished: int = 0):
+                 is_finished: int = 0, *, service_name: str = '', log_id: str = '',
+                 tag_truncate_conf: Optional[TagTruncateConf] = None):
+        # span context param
         super().__init__(trace_id, span_id, baggage)
+
+        # basic param
         self.span_type = span_type
         self.name = name
+
+        # These params can be changed, but remember locking when changed
+        self.service_name = service_name
+        self.log_id = log_id
         self.space_id = space_id
         self.parent_span_id = parent_span_id
         self.start_time = start_time if start_time else datetime.now()
@@ -65,6 +79,8 @@ class Span(span.Span, SpanContext, ABC):
         self.tag_map = tag_map if tag_map else {}
         self.system_tag_map = system_tag_map if system_tag_map else {}
         self.status_code = status_code
+
+        # These params is internal field
         self.multi_modality_key_map = multi_modality_key_map if multi_modality_key_map else {}
         self.ultra_large_report = ultra_large_report
         self.span_processor = span_processor
@@ -72,6 +88,7 @@ class Span(span.Span, SpanContext, ABC):
         self.is_finished = is_finished
         self.lock = threading.RLock()
         self.bytes_size: int = 0
+        self.tag_truncate_conf = tag_truncate_conf
 
     def set_tags(self, tag_kv: Dict[str, Any]):
         if not tag_kv:
@@ -138,7 +155,7 @@ class Span(span.Span, SpanContext, ABC):
         return self.ultra_large_report
 
     def baggage(self) -> Dict[str, str]:
-        return super().baggage()
+        return super().baggage
 
     def set_input(self, input_data):
         if self is None:
@@ -344,11 +361,30 @@ class Span(span.Span, SpanContext, ABC):
         self.set_tags({START_TIME_FIRST_RESP: start_time_first_resp})
 
     def set_runtime(self, runtime: Runtime) -> None:
-        r = Runtime(scene=V_SCENE_CUSTOM, library=runtime.library, library_version=runtime.library_version)
+        r = runtime
+        r.scene = V_SCENE_CUSTOM
         with self.lock:
             if self.system_tag_map is None:
                 self.system_tag_map = {}
             self.system_tag_map[RUNTIME_] = r
+
+    def set_service_name(self, service_name: str) -> None:
+        self.service_name = service_name
+
+    def set_log_id(self, log_id: str) -> None:
+        self.log_id = log_id
+
+    def set_system_tags(self, system_tags: Dict[str, Any]) -> None:
+        if not system_tags:
+            return
+        with self.lock:
+            if self.system_tag_map is None:
+                self.system_tag_map = {}
+            for key, value in system_tags.items():
+                self.system_tag_map[key] = value
+
+    def set_deployment_env(self, deployment_env: str) -> None:
+        self.set_tags({DEPLOYMENT_ENV: deployment_env})
 
     def get_rectified_map(self, input_map: Dict[str, Any]) -> (Dict[str, Any], List[str], int):
         validate_map = {}
@@ -368,7 +404,7 @@ class Span(span.Span, SpanContext, ABC):
                 value = value_str
 
             # Truncate the value if a single tag's value is too large
-            tag_value_length_limit = get_tag_value_size_limit(key)
+            tag_value_length_limit = self.get_tag_value_size_limit(key)
             is_ultra_large_report = False
             v, is_truncate = truncate_string_by_byte(value_str, tag_value_length_limit)
             if is_truncate:
@@ -396,6 +432,16 @@ class Span(span.Span, SpanContext, ABC):
 
     def is_can_cut_off(self, value: Any) -> bool:
         return value is not None and not isinstance(value, (int, float, bool))
+
+    def get_tag_value_size_limit(self, key: str) -> int:
+        limit = get_tag_value_size_limit(key)
+        if key == INPUT or key == OUTPUT:
+            if self.tag_truncate_conf and self.tag_truncate_conf.input_output_field_max_byte > 0:
+                limit = self.tag_truncate_conf.input_output_field_max_byte
+        else:
+            if self.tag_truncate_conf and self.tag_truncate_conf.normal_field_max_byte > 0:
+                limit = self.tag_truncate_conf.normal_field_max_byte
+        return limit
 
     def set_multi_modality_map(self, key: str):
         with self.lock:
@@ -487,7 +533,8 @@ class Span(span.Span, SpanContext, ABC):
 
         input_tokens = tag_map.get(INPUT_TOKENS, 0)
         output_tokens = tag_map.get(OUTPUT_TOKENS, 0)
-        self.set_tags({TOKENS: int(input_tokens) + int(output_tokens)})
+        if input_tokens > 0 or output_tokens > 0:
+            self.set_tags({TOKENS: int(input_tokens) + int(output_tokens)})
 
         duration = int((datetime.now().timestamp() - self.start_time.timestamp()) * 1000000)
         with self.lock:
@@ -512,10 +559,13 @@ class Span(span.Span, SpanContext, ABC):
     def to_header_baggage(self) -> str:
         if not self.baggage:
             return ""
-        return ",".join(f"{k}={v}" for k, v in self.baggage.items())
+        return ",".join(f"{k}={v}" for k, v in self.baggage().items())
 
     def to_header_parent(self) -> str:
         return f"{GLOBAL_TRACE_VERSION:02x}-{self.trace_id}-{self.span_id}-{self.flags:02x}"
+
+    def is_root_span(self) -> bool:
+        return self.parent_span_id is None or self.parent_span_id == '' or self.parent_span_id == '0'
 
     def __enter__(self):
         return self

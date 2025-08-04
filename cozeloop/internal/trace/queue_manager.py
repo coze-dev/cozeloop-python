@@ -12,12 +12,19 @@
 import logging
 import queue
 import threading
-from typing import Any, Callable, List
+from typing import Any, Callable, List, Optional
 from queue import Queue
 
 from pydantic import BaseModel
 
+from cozeloop.internal.trace.model.model import FinishEventInfo, FinishEventInfoExtra
+
 logger = logging.getLogger(__name__)
+
+QUEUE_NAME_SPAN = "span"
+QUEUE_NAME_SPAN_RETRY = "span_retry"
+QUEUE_NAME_FILE = "file"
+QUEUE_NAME_FILE_RETRY = "file_retry"
 
 class QueueManager:
     def enqueue(self, s: Any, byte_size: int):
@@ -37,6 +44,7 @@ class BatchQueueManagerOptions(BaseModel):
     max_export_batch_length: int
     max_export_batch_byte_size: int
     export_func: Callable[[dict, List[Any]], None]
+    finish_event_processor: Optional[Callable[[FinishEventInfo], None]] = None
 
 
 class BatchQueueManager(QueueManager):
@@ -47,6 +55,7 @@ class BatchQueueManager(QueueManager):
         self.batch = []
         self.batch_byte_size = 0
         self.batch_lock = threading.Lock()
+        self.size_lock = threading.Lock()
         self.export_func = options.export_func
         self.stop_event = threading.Event()
 
@@ -80,8 +89,9 @@ class BatchQueueManager(QueueManager):
     def is_should_export(self) -> bool:
         if len(self.batch) >= self.options.max_export_batch_length:
             return True
-        if self.batch_byte_size >= self.options.max_export_batch_byte_size:
-            return True
+        with self.size_lock:
+            if self.batch_byte_size >= self.options.max_export_batch_byte_size:
+                return True
         return False
 
     def _drain_queue(self):
@@ -99,45 +109,62 @@ class BatchQueueManager(QueueManager):
         self._do_export_batch()
 
     def _do_export(self):
-        logger.debug(
-            f"{self.options.queue_name} queue _do_export, len: {len(self.batch)}")
         with self.batch_lock:
             while not self.queue.empty():
                 item = self.queue.get()
                 self.batch.append(item)
                 if len(self.batch) == self.options.max_export_batch_length:
                     break
-        logger.debug(
-            f"{self.options.queue_name} queue _do_export_end, len: {len(self.batch)}")
         self._do_export_batch()
 
     def _do_export_batch(self):
-        logger.debug(
-            f"{self.options.queue_name} queue _do_export_batch, len: {len(self.batch)}")
         with self.batch_lock:
             if self.batch:
                 if self.export_func:
+                    logger.debug(
+                        f"{self.options.queue_name} queue _do_export, len: {len(self.batch)}")
                     self.export_func({}, self.batch)
                 self.batch = []
-                self.batch_byte_size = 0
+                with self.size_lock:
+                    self.batch_byte_size = 0
 
     def enqueue(self, item: Any, byte_size: int):
         if self.stop_event.is_set():
             return
 
+        is_fail = False
+        detail_msg = ""
         try:
             self.queue.put_nowait(item)
             if self.queue.qsize() >= self.options.max_queue_length:
                 with self.condition:
                     self.condition.notify()
-            logger.debug(f"{self.options.queue_name} enqueue, queue length: {self.queue.qsize()}")
+            detail_msg = f"{self.options.queue_name} enqueue, queue length: {self.queue.qsize()}"
         except queue.Full:
-            logger.error(
-                f"{self.options.queue_name} queue is full, dropped span")
+            is_fail = True
+            detail_msg = f"{self.options.queue_name} queue is full, dropped span"
             self.dropped += 1
         else:
-            with self.batch_lock:
+            with self.size_lock:
                 self.batch_byte_size += byte_size
+
+        event_typ = "queue_manager.file_entry.rate"
+        extra_params = FinishEventInfoExtra(is_root_span=False)
+        if self.options.queue_name == QUEUE_NAME_SPAN or self.options.queue_name == QUEUE_NAME_SPAN_RETRY:
+            event_typ = "queue_manager.span_entry.rate"
+            if item.is_root_span():
+                extra_params = FinishEventInfoExtra(
+                    is_root_span=True,
+                )
+
+        if self.options and self.options.finish_event_processor:
+            self.options.finish_event_processor(FinishEventInfo(
+                event_type=event_typ,
+                is_event_fail=is_fail,
+                item_num=1,
+                detail_msg=detail_msg,
+                extra_params=extra_params
+            ))
 
     def shutdown(self) -> bool:
         if self.stop_event.is_set():

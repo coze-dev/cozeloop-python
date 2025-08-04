@@ -110,6 +110,18 @@ class NoopSpan(Span, ABC):
     def set_runtime(self, runtime: Runtime) -> None:
         pass
 
+    def set_service_name(self, service_name: str) -> None:
+        pass
+
+    def set_log_id(self, log_id: str) -> None:
+        pass
+
+    def set_system_tags(self, system_tags: Dict[str, Any]) -> None:
+        pass
+
+    def set_deployment_env(self, deployment_env: str) -> None:
+        pass
+
     def __enter__(self):
         return self
 

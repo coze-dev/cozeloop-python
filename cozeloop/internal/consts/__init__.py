@@ -39,6 +39,7 @@ MESSAGE_ID = "message_id"
 THREAD_ID = "thread_id"
 START_TIME_FIRST_RESP = "start_time_first_resp"
 LATENCY_FIRST_RESP = "latency_first_resp"
+DEPLOYMENT_ENV = "deployment_env"
 CUT_OFF = "cut_off"
 
 # ReserveFieldTypes Define the allowed types for each reserved field.
