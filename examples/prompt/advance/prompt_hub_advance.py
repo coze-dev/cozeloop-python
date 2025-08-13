@@ -95,19 +95,14 @@ if __name__ == '__main__':
     client = cozeloop.new_client(
         # Set whether to report a trace span when get or format prompt.
         # Default value is false.
-        prompt_trace=True,
-        workspace_id="7496795200791511052",
-        api_token="pat_tClAonoIB5ET9fVFLr75o1rHxoxaaxPaodLyIOeL5CLy8XLlpTuxkEdrDOXSCxky")
-
-    os.environ["x-tt-env"] = "ppe_wf_loop_pe"
-    os.environ["x-use-ppe"] = "1"
+        prompt_trace=True)
 
     # 3. new root span
     rootSpan = client.start_span("root_span", "main_span")
 
     # 4. Get the prompt
     # If no specific version is specified, the latest version of the corresponding prompt will be obtained
-    prompt = client.get_prompt(prompt_key="wf1", version="0.0.3")
+    prompt = client.get_prompt(prompt_key="prompt_hub_demo", version="0.0.1")
     if prompt is not None:
         # Get messages of the prompt
         if prompt.prompt_template is not None:
