@@ -239,7 +239,7 @@ class PromptProvider:
     ) -> str:
         if template_type == TemplateType.NORMAL:
             # Create custom Environment using DebugUndefined to preserve original form of undefined variables
-            env = Environment(
+            env = SandboxedEnvironment(
                 loader=BaseLoader(),
                 undefined=CustomUndefined,
                 variable_start_string='{{',
@@ -263,7 +263,7 @@ class PromptProvider:
         """渲染 Jinja2 模板"""
         env = SandboxedEnvironment()
         template = env.from_string(template_str)
-        render_vars = {k: variables.get(k, '') for k in variable_def_map.keys()}
+        render_vars = {k: variables[k] for k in variable_def_map.keys() if variables is not None and k in variables}
         return template.render(**render_vars)
 
 class CustomUndefined(Undefined):
