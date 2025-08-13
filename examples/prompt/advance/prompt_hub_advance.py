@@ -107,7 +107,7 @@ if __name__ == '__main__':
 
     # 4. Get the prompt
     # If no specific version is specified, the latest version of the corresponding prompt will be obtained
-    prompt = client.get_prompt(prompt_key="wf1", version="0.0.2")
+    prompt = client.get_prompt(prompt_key="wf1", version="0.0.3")
     if prompt is not None:
         # Get messages of the prompt
         if prompt.prompt_template is not None:
