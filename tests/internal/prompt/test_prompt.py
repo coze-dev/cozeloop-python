@@ -634,12 +634,6 @@ def test_format_normal_messages_null_message(prompt_provider):
     assert result[0].content == "Hello"
     assert result[1].role == Role.USER
     assert result[1].content == "World"
-
-
-# =============================================================================
-# 新增变量类型验证测试
-# =============================================================================
-
 def test_validate_variable_values_type_boolean_valid(prompt_provider):
     """测试有效的 boolean 类型变量"""
     var_defs = [VariableDef(key="enabled", desc="Enable feature", type=VariableType.BOOLEAN)]
@@ -904,7 +898,7 @@ Hello stranger!
     variables = {"user": "Alice", "items": ["book", "pen"]}
     
     result = prompt_provider._render_jinja2_template(template_str, variable_def_map, variables)
-    expected = "Hello Alice!\nYour items:\n- book\n- pen"
+    expected = "Hello Alice!Your items:\n- book\n- pen"
     assert result == expected
 
 

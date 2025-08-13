@@ -59,7 +59,16 @@ def _convert_message(msg: OpenAPIMessage) -> EntityMessage:
 def _convert_variable_type(openapi_type: OpenAPIVariableType) -> EntityVariableType:
     type_mapping = {
         OpenAPIVariableType.STRING: EntityVariableType.STRING,
-        OpenAPIVariableType.PLACEHOLDER: EntityVariableType.PLACEHOLDER
+        OpenAPIVariableType.PLACEHOLDER: EntityVariableType.PLACEHOLDER,
+        OpenAPIVariableType.BOOLEAN: EntityVariableType.BOOLEAN,
+        OpenAPIVariableType.INTEGER: EntityVariableType.INTEGER,
+        OpenAPIVariableType.FLOAT: EntityVariableType.FLOAT,
+        OpenAPIVariableType.OBJECT: EntityVariableType.OBJECT,
+        OpenAPIVariableType.ARRAY_STRING: EntityVariableType.ARRAY_STRING,
+        OpenAPIVariableType.ARRAY_INTEGER: EntityVariableType.ARRAY_INTEGER,
+        OpenAPIVariableType.ARRAY_FLOAT: EntityVariableType.ARRAY_FLOAT,
+        OpenAPIVariableType.ARRAY_BOOLEAN: EntityVariableType.ARRAY_BOOLEAN,
+        OpenAPIVariableType.ARRAY_OBJECT: EntityVariableType.ARRAY_OBJECT
     }
     return type_mapping.get(openapi_type, EntityVariableType.STRING)  # Default to STRING type
 
@@ -122,7 +131,8 @@ def _convert_llm_config(config: OpenAPIModelConfig) -> EntityModelConfig:
 
 def _convert_template_type(openapi_template_type: OpenAPITemplateType) -> EntityTemplateType:
     template_mapping = {
-        OpenAPITemplateType.NORMAL: EntityTemplateType.NORMAL
+        OpenAPITemplateType.NORMAL: EntityTemplateType.NORMAL,
+        OpenAPITemplateType.JINJA2: EntityTemplateType.JINJA2
     }
     return template_mapping.get(openapi_template_type, EntityTemplateType.NORMAL)  # Default to NORMAL type
 
