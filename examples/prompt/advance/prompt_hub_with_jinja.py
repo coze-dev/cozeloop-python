@@ -77,7 +77,7 @@ class LLMRunner:
         finally:
             span.finish()
 
-# If you have some advanced usages, such as using jinja templates in prompts, you can refer to the following.
+# If you want to use the jinja templates in prompts, you can refer to the following.
 if __name__ == '__main__':
     # 1.Create a prompt on the platform
     # You can create a Prompt on the platform's Prompt development page (set Prompt Key to 'prompt_hub_demo'),
