@@ -35,4 +35,3 @@ venv.bak/
 /.vscode
 /output
 dist/
-.coda/
