@@ -6,6 +6,7 @@ from typing import Dict, Any, List, Optional
 
 from jinja2 import Environment, BaseLoader, Undefined
 from jinja2.utils import missing, object_type_repr
+from jinja2.sandbox import SandboxedEnvironment
 
 from cozeloop.spec.tracespec import PROMPT_KEY, INPUT, PROMPT_VERSION, V_SCENE_PROMPT_TEMPLATE, V_SCENE_PROMPT_HUB
 from cozeloop.entities.prompt import (Prompt, Message, VariableDef, VariableType, TemplateType, Role,
@@ -153,6 +154,27 @@ class PromptProvider:
             elif var_def.type == VariableType.PLACEHOLDER:
                 if not (isinstance(val, Message) or (isinstance(val, List) and all(isinstance(item, Message) for item in val))):
                     raise ValueError(f"type of variable '{var_def.key}' should be Message like object")
+            elif var_def.type == VariableType.BOOLEAN:
+                if not isinstance(val, bool):
+                    raise ValueError(f"type of variable '{var_def.key}' should be bool")
+            elif var_def.type == VariableType.INTEGER:
+                if not isinstance(val, int):
+                    raise ValueError(f"type of variable '{var_def.key}' should be int")
+            elif var_def.type == VariableType.FLOAT:
+                if not isinstance(val, float):
+                    raise ValueError(f"type of variable '{var_def.key}' should be float")
+            elif var_def.type == VariableType.ARRAY_STRING:
+                if not isinstance(val, list) or not all(isinstance(item, str) for item in val):
+                    raise ValueError(f"type of variable '{var_def.key}' should be array<string>")
+            elif var_def.type == VariableType.ARRAY_BOOLEAN:
+                if not isinstance(val, list) or not all(isinstance(item, bool) for item in val):
+                    raise ValueError(f"type of variable '{var_def.key}' should be array<boolean>")
+            elif var_def.type == VariableType.ARRAY_INTEGER:
+                if not isinstance(val, list) or not all(isinstance(item, int) for item in val):
+                    raise ValueError(f"type of variable '{var_def.key}' should be array<integer>")
+            elif var_def.type == VariableType.ARRAY_FLOAT:
+                if not isinstance(val, list) or not all(isinstance(item, float) for item in val):
+                    raise ValueError(f"type of variable '{var_def.key}' should be array<float>")
 
     def _format_normal_messages(
             self,
@@ -217,7 +239,7 @@ class PromptProvider:
     ) -> str:
         if template_type == TemplateType.NORMAL:
             # Create custom Environment using DebugUndefined to preserve original form of undefined variables
-            env = Environment(
+            env = SandboxedEnvironment(
                 loader=BaseLoader(),
                 undefined=CustomUndefined,
                 variable_start_string='{{',
@@ -230,9 +252,19 @@ class PromptProvider:
             render_vars = {k: variables.get(k, '') for k in variable_def_map.keys()}
             # Render template
             return template.render(**render_vars)
+        elif template_type == TemplateType.JINJA2:
+            return self._render_jinja2_template(template_str, variable_def_map, variables)
         else:
             raise ValueError(f"text render unsupported template type: {template_type}")
 
+
+    def _render_jinja2_template(self, template_str: str, variable_def_map: Dict[str, VariableDef],
+                                variables: Dict[str, Any]) -> str:
+        """渲染 Jinja2 模板"""
+        env = SandboxedEnvironment()
+        template = env.from_string(template_str)
+        render_vars = {k: variables[k] for k in variable_def_map.keys() if variables is not None and k in variables}
+        return template.render(**render_vars)
 
 class CustomUndefined(Undefined):
     __slots__ = ()

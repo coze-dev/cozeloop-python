@@ -14,6 +14,7 @@ MAX_PROMPT_QUERY_BATCH_SIZE = 25
 
 class TemplateType(str, Enum):
     NORMAL = "normal"
+    JINJA2 = "jinja2"
 
 
 class Role(str, Enum):
@@ -31,6 +32,15 @@ class ToolType(str, Enum):
 class VariableType(str, Enum):
     STRING = "string"
     PLACEHOLDER = "placeholder"
+    BOOLEAN = "boolean"
+    INTEGER = "integer"
+    FLOAT = "float"
+    OBJECT = "object"
+    ARRAY_STRING = "array<string>"
+    ARRAY_BOOLEAN = "array<boolean>"
+    ARRAY_INTEGER = "array<integer>"
+    ARRAY_FLOAT = "array<float>"
+    ARRAY_OBJECT = "array<object>"
 
 
 class ToolChoiceType(str, Enum):
