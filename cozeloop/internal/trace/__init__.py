@@ -6,4 +6,3 @@ from contextvars import ContextVar
 from .trace import TraceProvider
 
 from .trace import Span
-

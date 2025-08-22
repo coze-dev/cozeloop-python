@@ -1,10 +1,12 @@
 # Copyright (c) 2025 Bytedance Ltd. and/or its affiliates
 # SPDX-License-Identifier: MIT
-
+import logging
 import time
 from datetime import datetime
-from typing import Dict, Optional
+from typing import Dict, Optional, Callable
 
+from cozeloop.internal.trace.exporter import UploadPath
+from cozeloop.internal.trace.model.model import FinishEventInfo, TagTruncateConf, QueueConf
 from cozeloop.spec.tracespec import Runtime, RUNTIME_
 from cozeloop.internal import consts
 from cozeloop.internal.trace.span import from_header, Span, SpanContext, \
@@ -12,6 +14,7 @@ from cozeloop.internal.trace.span import from_header, Span, SpanContext, \
 from cozeloop.internal.trace.span_processor import BatchSpanProcessor, SpanProcessor
 from cozeloop.internal.utils.get import gen_16char_id, gen_32char_id
 
+logger = logging.getLogger(__name__)
 
 class TraceOptions:
     def __init__(self, workspace_id: str, ultra_large_report: bool = False):
@@ -33,11 +36,28 @@ class TraceProvider:
             http_client,
             workspace_id: str,
             *,
-            ultra_large_report: bool = False
+            ultra_large_report: bool = False,
+            finish_event_processor: Optional[Callable[[FinishEventInfo], None]] = None,
+            tag_truncate_conf: Optional[TagTruncateConf] = None,
+            span_upload_path: str = None,
+            file_upload_path: str = None,
+            queue_conf: Optional[QueueConf] = None,
     ):
         self.workspace_id = workspace_id
         self.ultra_large_report = ultra_large_report
-        self.span_processor: SpanProcessor = BatchSpanProcessor(http_client)
+        upload_path = None
+        if span_upload_path or file_upload_path:
+            upload_path = UploadPath(
+                span_upload_path=span_upload_path,
+                file_upload_path=file_upload_path,
+            )
+        self.span_processor: SpanProcessor = BatchSpanProcessor(
+            http_client,
+            upload_path,
+            finish_event_processor,
+            queue_conf,
+        )
+        self.tag_truncate_conf = tag_truncate_conf
 
     def start_span(
             self,
@@ -50,6 +70,10 @@ class TraceProvider:
             start_new_trace: bool = False,
             scene: str = ''
     ) -> Span:
+        if name == '':
+            name = 'unknown'
+        if span_type == '':
+            span_type = 'unknown'
         if len(name) > consts.MAX_BYTES_OF_ONE_TAG_VALUE_DEFAULT:
             logger.warning(
                 f"Name is too long, will be truncated to {consts.MAX_BYTES_OF_ONE_TAG_VALUE_DEFAULT} bytes, original name: {name}"
@@ -69,7 +93,7 @@ class TraceProvider:
             if parent_span_id is None:
                 parent_span_id = parent_span.span_id
             if baggage is None:
-                baggage = parent_span.baggage
+                baggage = parent_span.baggage()
 
         loop_span = self._start_span(name, span_type, start_time, parent_span_id, trace_id, baggage, scene)
         set_span_to_context(loop_span)
@@ -116,8 +140,9 @@ class TraceProvider:
             ultra_large_report=self.ultra_large_report,
             multi_modality_key_map={},
             span_processor=self.span_processor,
-            flags=0,
+            flags=1,     # default sampled
             is_finished=0,
+            tag_truncate_conf=self.tag_truncate_conf,
         )
 
         span.set_baggage_escape(baggage, False)
@@ -128,3 +153,12 @@ class TraceProvider:
 
     def close_trace(self):
         self.span_processor.shutdown()
+
+
+def default_finish_event_processor(info: FinishEventInfo):
+    if info is None:
+        return
+    if info.is_event_fail:
+        logger.error(f"[fornax_sdk] finish_event[{info.event_type}] fail, msg: {info.detail_msg}")
+    else:
+        logger.debug(f"[fornax_sdk] finish_event[{info.event_type}] success, item num: {info.item_num}, msg: {info.detail_msg}")

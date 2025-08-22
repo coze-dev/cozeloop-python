@@ -7,7 +7,9 @@ import logging
 import os
 import threading
 from datetime import datetime
-from typing import Dict, Any, List, Optional
+from typing import Dict, Any, List, Optional, Callable
+
+import httpx
 
 from cozeloop.client import Client
 from cozeloop._noop import NOOP_SPAN, _NoopClient
@@ -17,6 +19,8 @@ from cozeloop.internal.consts import ClientClosedError
 from cozeloop.internal.httpclient import Auth
 from cozeloop.internal.prompt import PromptProvider
 from cozeloop.internal.trace import TraceProvider
+from cozeloop.internal.trace.model.model import FinishEventInfo, TagTruncateConf, QueueConf
+from cozeloop.internal.trace.trace import default_finish_event_processor
 from cozeloop.span import SpanContext, Span
 
 logger = logging.getLogger(__name__)
@@ -34,6 +38,15 @@ _cache_lock = threading.Lock()
 
 _default_client = None
 _client_lock = threading.Lock()
+
+class APIBasePath:
+    def __init__(
+            self,
+            trace_span_upload_path: str = None,
+            trace_file_upload_path: str = None,
+    ):
+        self.trace_span_upload_path = trace_span_upload_path
+        self.trace_file_upload_path = trace_file_upload_path
 
 
 def _generate_cache_key(*args) -> str:
@@ -54,8 +67,13 @@ def new_client(
         prompt_cache_max_count: int = consts.DEFAULT_PROMPT_CACHE_MAX_COUNT,
         prompt_cache_refresh_interval: int = consts.DEFAULT_PROMPT_CACHE_REFRESH_INTERVAL,
         prompt_trace: bool = False,
+        http_client: Optional[httpx.Client] = None,
+        trace_finish_event_processor: Optional[Callable[[FinishEventInfo], None]] = None,
+        tag_truncate_conf: Optional[TagTruncateConf] = None,
+        api_base_path: Optional[APIBasePath] = None,
+        trace_queue_conf: Optional[QueueConf] = None,
 ) -> Client:
-    cache_key = _generate_cache_key(
+    cache_key = _generate_cache_key( # all args are used to generate cache key
         api_base_url,
         workspace_id,
         api_token,
@@ -67,7 +85,12 @@ def new_client(
         ultra_large_report,
         prompt_cache_max_count,
         prompt_cache_refresh_interval,
-        prompt_trace
+        prompt_trace,
+        http_client,
+        trace_finish_event_processor,
+        tag_truncate_conf,
+        api_base_path,
+        trace_queue_conf,
     )
 
     with _cache_lock:
@@ -88,6 +111,11 @@ def new_client(
             prompt_cache_max_count=prompt_cache_max_count,
             prompt_cache_refresh_interval=prompt_cache_refresh_interval,
             prompt_trace=prompt_trace,
+            arg_http_client=http_client,
+            trace_finish_event_processor=trace_finish_event_processor,
+            tag_truncate_conf=tag_truncate_conf,
+            api_base_path=api_base_path,
+            trace_queue_conf=trace_queue_conf,
         )
         _client_cache[cache_key] = client
         return client
@@ -113,7 +141,12 @@ class _LoopClient(Client):
             ultra_large_report: bool = False,
             prompt_cache_max_count: int = consts.DEFAULT_PROMPT_CACHE_MAX_COUNT,
             prompt_cache_refresh_interval: int = consts.DEFAULT_PROMPT_CACHE_REFRESH_INTERVAL,
-            prompt_trace: bool = False
+            prompt_trace: bool = False,
+            arg_http_client: Optional[httpx.Client] = None,
+            trace_finish_event_processor: Optional[Callable[[FinishEventInfo], None]] = None,
+            tag_truncate_conf: Optional[TagTruncateConf] = None,
+            api_base_path: Optional[APIBasePath] = None,
+            trace_queue_conf: Optional[QueueConf] = None,
     ):
         workspace_id = self._get_from_env(workspace_id, ENV_WORKSPACE_ID)
         api_base_url = self._get_from_env(api_base_url, ENV_API_BASE_URL)
@@ -136,6 +169,8 @@ class _LoopClient(Client):
 
         self._workspace_id = workspace_id
         inner_client = httpclient.HTTPClient()
+        if arg_http_client:
+            inner_client = arg_http_client
         auth = self._build_auth(
             api_base_url=api_base_url,
             http_client=inner_client,
@@ -151,10 +186,26 @@ class _LoopClient(Client):
             timeout=timeout,
             upload_timeout=upload_timeout
         )
+        finish_pro = default_finish_event_processor
+        if trace_finish_event_processor:
+            def combined_processor(event_info: FinishEventInfo):
+                default_finish_event_processor(event_info)
+                trace_finish_event_processor(event_info)
+            finish_pro = combined_processor
+        span_upload_path = None
+        file_upload_path = None
+        if api_base_path:
+            span_upload_path = api_base_path.trace_span_upload_path
+            file_upload_path = api_base_path.trace_file_upload_path
         self._trace_provider = TraceProvider(
             http_client=http_client,
             workspace_id=workspace_id,
-            ultra_large_report=ultra_large_report
+            ultra_large_report=ultra_large_report,
+            finish_event_processor=finish_pro,
+            tag_truncate_conf=tag_truncate_conf,
+            span_upload_path=span_upload_path,
+            file_upload_path=file_upload_path,
+            queue_conf=trace_queue_conf,
         )
         self._prompt_provider = PromptProvider(
             workspace_id=workspace_id,
@@ -234,7 +285,7 @@ class _LoopClient(Client):
             else:
                 return self._trace_provider.start_span(name=name, span_type=span_type, start_time=start_time,
                                                        parent_span_id=child_of.span_id, trace_id=child_of.trace_id,
-                                                       baggage=child_of.baggage, start_new_trace=start_new_trace)
+                                                       baggage=child_of.baggage(), start_new_trace=start_new_trace)
         except Exception as e:
             logger.warning(f"Start span failed, returning noop span. Error: {e}")
             return NOOP_SPAN

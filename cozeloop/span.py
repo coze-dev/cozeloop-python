@@ -135,6 +135,7 @@ class CommonSpanSetter(ABC):
     def set_model_call_options(self, model_call_options: Any) -> None:
         """
         Set the model call options
+        Key: `call_options`.
         """
 
     @abstractmethod
@@ -166,6 +167,30 @@ class CommonSpanSetter(ABC):
         Set the runtime of the span. Only used for integration.
         Key: `runtime`.
         """
+
+    @abstractmethod
+    def set_service_name(self, service_name: str) -> None:
+        """
+        set the custom service name, identify different services.
+        """
+
+    @abstractmethod
+    def set_log_id(self, log_id: str) -> None:
+        """
+        Set the custom log id, identify different query.
+        """
+
+    @abstractmethod
+    def set_system_tags(self, system_tags: Dict[str, Any]) -> None:
+        """
+        Set system tags. DO NOT use this method unless you know what you are doing.
+        """
+
+    def set_deployment_env(self, deployment_env: str) -> None:
+        """
+        Set the deployment environment of the span, identify custom environments.
+        """
+
 
 class Span(CommonSpanSetter, SpanContext):
     """

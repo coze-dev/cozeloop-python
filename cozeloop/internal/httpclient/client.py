@@ -43,10 +43,10 @@ class Client:
             res.update(headers)
         res[consts.AUTHORIZE_HEADER] = f"Bearer {self.auth.token}"
 
-        tt_env = os.getenv("x-tt-env")
+        tt_env = os.getenv("x_tt_env")
         if tt_env:
             res["x-tt-env"] = tt_env
-        ppe_env = os.getenv("x-use-ppe")
+        ppe_env = os.getenv("x_use_ppe")
         if ppe_env:
             res["x-use-ppe"] = "1"
 
