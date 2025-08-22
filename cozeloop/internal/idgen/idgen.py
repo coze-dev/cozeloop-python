@@ -34,7 +34,6 @@ class MultiDeltaIDGenerator(IDGenerator):
 
 class AccumulateIDGenerator:
     def __init__(self, reseed_threshold, delta):
-        random.seed(time.time())
         self.random_number = lambda: random.randint(0, int(min(2**63 - 1, reseed_threshold)))
         self.seed = self.random_number()
         self.max_id = reseed_threshold
