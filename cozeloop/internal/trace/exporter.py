@@ -173,7 +173,7 @@ def transfer_to_upload_span_and_file(spans: List['Span']) -> (List[UploadSpan], 
 
 def parse_tag(span_tag: Dict[str, Any], is_system_tag: bool) -> (Dict[str, str], Dict[str, int], Dict[str, float], Dict[str, bool]):
     if not span_tag:
-        return {}, {}, {}
+        return {}, {}, {}, {}
 
     v_str_map = {}
     v_long_map = {}
