@@ -103,6 +103,7 @@ class Prompt(BaseModel):
 class PromptQuery(BaseModel):
     prompt_key: str
     version: Optional[str] = None
+    label: Optional[str] = None
 
 
 class MPullPromptRequest(BaseModel):

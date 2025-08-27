@@ -27,7 +27,7 @@ class _NoopClient(Client):
     def close(self):
         logger.warning(f"Noop client not supported. {self.new_exception}")
 
-    def get_prompt(self, prompt_key: str, version: str = '') -> Optional[Prompt]:
+    def get_prompt(self, prompt_key: str, version: str = '', label: str = '') -> Optional[Prompt]:
         logger.warning(f"Noop client not supported. {self.new_exception}")
         raise self.new_exception
 
