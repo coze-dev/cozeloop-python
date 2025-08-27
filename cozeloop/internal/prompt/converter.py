@@ -19,6 +19,8 @@ from cozeloop.entities.prompt import (
     VariableType as EntityVariableType,
     ToolType as EntityToolType,
     PromptVariable,
+    ContentType as EntityContentType,
+    ContentPart as EntityContentPart,
 )
 
 from cozeloop.internal.prompt.openapi import (
@@ -34,7 +36,9 @@ from cozeloop.internal.prompt.openapi import (
     ToolType as OpenAPIToolType,
     Role as OpenAPIRole,
     ToolChoiceType as OpenAPIChoiceType,
-    TemplateType as OpenAPITemplateType
+    TemplateType as OpenAPITemplateType,
+    ContentType as OpenAPIContentType,
+    ContentPart as OpenAPIContentPart,
 )
 
 
@@ -49,10 +53,26 @@ def _convert_role(openapi_role: OpenAPIRole) -> EntityRole:
     return role_mapping.get(openapi_role, EntityRole.USER)  # Default to USER type
 
 
+def _convert_content_type(openapi_type: OpenAPIContentType) -> EntityContentType:
+    content_type_mapping = {
+        OpenAPIContentType.TEXT: EntityContentType.TEXT,
+        OpenAPIContentType.MULTI_PART_VARIABLE: EntityContentType.MULTI_PART_VARIABLE,
+    }
+    return content_type_mapping.get(openapi_type, EntityContentType.TEXT)
+
+
+def to_content_part(openapi_part: OpenAPIContentPart) -> EntityContentPart:
+    return EntityContentPart(
+        type=_convert_content_type(openapi_part.type),
+        text=openapi_part.text
+    )
+
+
 def _convert_message(msg: OpenAPIMessage) -> EntityMessage:
     return EntityMessage(
         role=_convert_role(msg.role),
-        content=msg.content
+        content=msg.content,
+        parts=[to_content_part(part) for part in msg.parts] if msg.parts else None
     )
 
 
@@ -68,7 +88,8 @@ def _convert_variable_type(openapi_type: OpenAPIVariableType) -> EntityVariableT
         OpenAPIVariableType.ARRAY_INTEGER: EntityVariableType.ARRAY_INTEGER,
         OpenAPIVariableType.ARRAY_FLOAT: EntityVariableType.ARRAY_FLOAT,
         OpenAPIVariableType.ARRAY_BOOLEAN: EntityVariableType.ARRAY_BOOLEAN,
-        OpenAPIVariableType.ARRAY_OBJECT: EntityVariableType.ARRAY_OBJECT
+        OpenAPIVariableType.ARRAY_OBJECT: EntityVariableType.ARRAY_OBJECT,
+        OpenAPIVariableType.MULTI_PART: EntityVariableType.MULTI_PART,
     }
     return type_mapping.get(openapi_type, EntityVariableType.STRING)  # Default to STRING type
 
