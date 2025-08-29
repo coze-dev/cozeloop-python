@@ -6,6 +6,8 @@ import logging
 import time
 from typing import Dict, List, Optional, Tuple, Callable, Any
 
+import pydantic
+
 from cozeloop.spec.tracespec import ModelInput, ModelMessagePart, ModelMessagePartType, ModelImageURL, ModelFileURL, ModelOutput
 from cozeloop.internal.consts import *
 from cozeloop.internal.httpclient import Client, BaseResponse
@@ -16,6 +18,35 @@ from cozeloop.internal.utils.get import gen_16char_id
 from cozeloop.internal.utils.validation import is_valid_url
 
 logger = logging.getLogger(__name__)
+
+
+class UploadSpan(BaseModel):
+    started_at_micros: int
+    log_id: str
+    span_id: str
+    parent_id: str
+    trace_id: str
+    duration_micros: int
+    service_name: str
+    workspace_id: str
+    span_name: str
+    span_type: str
+    status_code: int
+    input: str
+    output: str
+    object_storage: str
+    system_tags_string: Dict[str, str]
+    system_tags_long: Dict[str, int]
+    system_tags_double: Dict[str, float]
+    tags_string: Dict[str, str]
+    tags_long: Dict[str, int]
+    tags_double: Dict[str, float]
+    tags_bool: Dict[str, bool]
+
+
+class UploadSpanData(BaseModel):
+    spans: List['UploadSpan']
+
 
 class Exporter:
     def export_spans(self, ctx: dict, spans: List['UploadSpan']):
@@ -90,34 +121,6 @@ class SpanExporter(Exporter):
                 raise Exception(f"code:[{resp.code}], msg:[{resp.msg}]")
         except Exception as e:
             raise Exception(f"export spans fail, err:[{e}]")
-
-
-class UploadSpanData(BaseModel):
-    spans: List['UploadSpan']
-
-
-class UploadSpan(BaseModel):
-    started_at_micros: int
-    log_id: str
-    span_id: str
-    parent_id: str
-    trace_id: str
-    duration_micros: int
-    service_name: str
-    workspace_id: str
-    span_name: str
-    span_type: str
-    status_code: int
-    input: str
-    output: str
-    object_storage: str
-    system_tags_string: Dict[str, str]
-    system_tags_long: Dict[str, int]
-    system_tags_double: Dict[str, float]
-    tags_string: Dict[str, str]
-    tags_long: Dict[str, int]
-    tags_double: Dict[str, float]
-    tags_bool: Dict[str, bool]
 
 
 class UploadFile(BaseModel):
@@ -216,7 +219,10 @@ def convert_input(span_key: str, span: Span) -> (str, List[UploadFile]):
         model_input = ModelInput()
         if isinstance(value, str):
             try:
-                model_input = ModelInput.model_validate_json(value)
+                if pydantic.VERSION.startswith('1'):
+                    model_input = ModelInput.parse_raw(value)
+                else:
+                    model_input = ModelInput.model_validate_json(value)
             except Exception as e:
                 logger.error(f"unmarshal ModelInput failed, err: {e}")
                 return "", []
@@ -226,7 +232,10 @@ def convert_input(span_key: str, span: Span) -> (str, List[UploadFile]):
                 files = transfer_message_part(part, span, span_key)
                 upload_files.extend(files)
 
-        value_res = model_input.model_dump_json()
+        if pydantic.VERSION.startswith('1'):
+            value_res = model_input.json()
+        else:
+            value_res = model_input.model_dump_json()
 
         if len(value_res) > MAX_BYTES_OF_ONE_TAG_VALUE_OF_INPUT_OUTPUT:
             value_res, f = transfer_text(value_res, span, span_key)
@@ -251,7 +260,10 @@ def convert_output(span_key: str, span: Span) -> (str, List[UploadFile]):
         model_output = ModelOutput()
         if isinstance(value, str):
             try:
-                model_output = ModelOutput.model_validate_json(value)
+                if pydantic.VERSION.startswith('1'):
+                    model_output = ModelOutput.parse_raw(value)
+                else:
+                    model_output = ModelOutput.model_validate_json(value)
             except Exception as e:
                 logger.error(f"unmarshal ModelOutput failed, err: {e}")
                 return "", []
@@ -330,8 +342,10 @@ def transfer_object_storage(span_upload_files: List[UploadFile]) -> str:
     if not is_exist:
         return ""
 
-
-    return object_storage.model_dump_json()
+    if pydantic.VERSION.startswith('1'):
+        return object_storage.json()
+    else:
+        return object_storage.model_dump_json()
 
 
 def transfer_message_part(src: ModelMessagePart, span: 'Span', tag_key: str) -> List[UploadFile]:

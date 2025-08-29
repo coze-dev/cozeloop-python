@@ -7,6 +7,7 @@ import time
 import traceback
 from typing import List, Dict, Union, Any, Optional
 
+import pydantic
 from pydantic import Field, BaseModel
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.schema import AgentFinish, AgentAction, LLMResult
@@ -445,7 +446,10 @@ def _convert_inputs(inputs: Any) -> Any:
     if isinstance(inputs, PromptValue):
         return _convert_inputs(inputs.to_messages())
     if isinstance(inputs, BaseModel):
-        return inputs.model_dump_json()
+        if pydantic.VERSION.startswith('1'):
+            return inputs.json()
+        else:
+            return inputs.model_dump_json()
     if inputs is None:
         return 'None'
-    return 'type of inputs is not supported'
+    return str(inputs)
