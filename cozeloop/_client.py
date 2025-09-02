@@ -259,10 +259,10 @@ class _LoopClient(Client):
         self._trace_provider.close_trace()
         self._closed = True
 
-    def get_prompt(self, prompt_key: str, version: str = '') -> Optional[Prompt]:
+    def get_prompt(self, prompt_key: str, version: str = '', label: str = '') -> Optional[Prompt]:
         if self._closed:
             raise ClientClosedError()
-        return self._prompt_provider.get_prompt(prompt_key, version)
+        return self._prompt_provider.get_prompt(prompt_key, version, label)
 
     def prompt_format(self, prompt: Prompt, variables: Dict[str, PromptVariable]) -> List[Message]:
         if self._closed:
@@ -360,8 +360,8 @@ def close():
     return get_default_client().close()
 
 
-def get_prompt(prompt_key: str, version: str = '') -> Prompt:
-    return get_default_client().get_prompt(prompt_key, version)
+def get_prompt(prompt_key: str, version: str = '', label: str = '') -> Prompt:
+    return get_default_client().get_prompt(prompt_key, version, label)
 
 
 def prompt_format(prompt: Prompt, variables: Dict[str, Any]) -> List[Message]:
