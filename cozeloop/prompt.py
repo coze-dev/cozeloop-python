@@ -13,12 +13,13 @@ class PromptClient(ABC):
     """
 
     @abstractmethod
-    def get_prompt(self, prompt_key: str, version: str = '') -> Optional[Prompt]:
+    def get_prompt(self, prompt_key: str, version: str = '', label: str = '') -> Optional[Prompt]:
         """
         Get a prompt by prompt key and version.
 
         :param prompt_key: A unique key for retrieving the prompt.
         :param version: The version of the prompt. Defaults to empty, which represents fetching the latest version.
+        :param label: The label of the prompt. Defaults to empty.
         :return: An instance of `entity.Prompt` if found, or None.
         """
 

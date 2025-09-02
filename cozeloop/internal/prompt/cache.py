@@ -41,15 +41,15 @@ class PromptCache:
         if auto_refresh and self.openapi_client is not None:
             self._start_refresh_task()
 
-    def get(self, prompt_key: str, version: str) -> Optional['Prompt']:
-        cache_key = self._get_cache_key(prompt_key, version)
+    def get(self, prompt_key: str, version: str, label: str = '') -> Optional['Prompt']:
+        cache_key = self._get_cache_key(prompt_key, version, label)
         return self.cache.get(cache_key)
 
-    def set(self, prompt_key: str, version: str, value: 'Prompt') -> None:
-        cache_key = self._get_cache_key(prompt_key, version)
+    def set(self, prompt_key: str, version: str, label: str, value: 'Prompt') -> None:
+        cache_key = self._get_cache_key(prompt_key, version, label)
         self.cache[cache_key] = value
 
-    def get_all_prompt_queries(self) -> List[Tuple[str, str]]:
+    def get_all_prompt_queries(self) -> List[Tuple[str, str, str]]:
         result = []
         for cache_key in self.cache.keys():
             parsed = self._parse_cache_key(cache_key)
@@ -57,13 +57,13 @@ class PromptCache:
                 result.append(parsed)
         return result
 
-    def _get_cache_key(self, prompt_key: str, version: str) -> str:
-        return f"prompt_hub:{prompt_key}:{version}"
+    def _get_cache_key(self, prompt_key: str, version: str, label: str = '') -> str:
+        return f"prompt_hub:{prompt_key}:{version}:{label}"
 
-    def _parse_cache_key(self, cache_key: str) -> Optional[Tuple[str, str]]:
+    def _parse_cache_key(self, cache_key: str) -> Optional[Tuple[str, str, str]]:
         parts = cache_key.split(':')
-        if len(parts) == 3:
-            return parts[1], parts[2]
+        if len(parts) == 4:
+            return parts[1], parts[2], parts[3]
         return None
 
     def _start_refresh_task(self):
@@ -91,13 +91,13 @@ class PromptCache:
         """Refresh all cached prompts"""
         try:
             # Get all cached prompt_keys and versions
-            key_pairs = self.get_all_prompt_queries()
-            queries = [PromptQuery(prompt_key=prompt_key, version=version) for prompt_key, version in key_pairs]
+            key_tuples = self.get_all_prompt_queries()
+            queries = [PromptQuery(prompt_key=prompt_key, version=version, label=label) for prompt_key, version, label in key_tuples]
             try:
                 results = self.openapi_client.mpull_prompt(self.workspace_id, queries)
                 for result in results:
-                    prompt_key, version = result.query.prompt_key, result.query.version
-                    self.set(prompt_key, version, _convert_prompt(result.prompt))
+                    prompt_key, version, label = result.query.prompt_key, result.query.version, result.query.label
+                    self.set(prompt_key, version, label, _convert_prompt(result.prompt))
             except Exception as e:
                 logger.error(f"Error refreshing prompts: {e}")
 
