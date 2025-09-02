@@ -37,7 +37,7 @@ def convert_model_input(messages: List[Message]) -> ModelInput:
     model_messages = []
     for message in messages:
         model_messages.append(ModelMessage(
-            role=str(message.role),
+            role=message.role,
             content=message.content if message.content is not None else "",
             parts=[_to_span_content_part(part) for part in message.parts] if message.parts else None
         ))
@@ -151,9 +151,6 @@ if __name__ == '__main__':
                 ContentPart(type=ContentType.TEXT),
                 ContentPart(type=ContentType.IMAGE_URL),
             ],
-            # Placeholder variable type should be Message/List[Message]
-            "P1": [Message(role=Role.USER, content="Hello!"),
-                   Message(role=Role.ASSISTANT, content="Hello!")]
             # Other variables in the prompt template that are not provided with corresponding values will be
             # considered as empty values.
         })
@@ -171,4 +168,3 @@ if __name__ == '__main__':
     # Note that flush will block and wait for the report to complete, and it may cause frequent reporting,
     # affecting performance.
     client.flush()
-    time.sleep(2)
