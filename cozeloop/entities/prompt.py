@@ -50,14 +50,10 @@ class ContentType(str, Enum):
     MULTI_PART_VARIABLE = "multi_part_variable"
 
 
-class ImageURL(BaseModel):
-    url: str
-
-
 class ContentPart(BaseModel):
     type: ContentType
     text: Optional[str] = None
-    image_url: Optional[ImageURL] = None
+    image_url: Optional[str] = None
 
 
 class Message(BaseModel):

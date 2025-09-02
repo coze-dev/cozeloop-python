@@ -7,7 +7,7 @@ from unittest.mock import MagicMock, patch, call
 
 from cozeloop.entities.prompt import (
     Prompt, Message, VariableDef, VariableType, TemplateType, Role, PromptVariable,
-    ContentType, ContentPart, ImageURL
+    ContentType, ContentPart
 )
 from cozeloop.internal import consts
 from cozeloop.internal.consts.error import RemoteServiceError
@@ -1134,7 +1134,7 @@ def test_validate_variable_values_type_multi_part_valid(prompt_provider):
     # 创建有效的 ContentPart 列表
     content_parts = [
         ContentPart(type=ContentType.TEXT, text="Hello"),
-        ContentPart(type=ContentType.IMAGE_URL, image_url=ImageURL(url="https://example.com/image.jpg"))
+        ContentPart(type=ContentType.IMAGE_URL, image_url="https://example.com/image.jpg")
     ]
 
     var_defs = [VariableDef(key="multi_content", desc="Multi-part content", type=VariableType.MULTI_PART)]
@@ -1168,7 +1168,7 @@ def test_format_multi_part_text_rendering(prompt_provider):
     # 创建包含模板变量的 ContentPart 列表
     parts = [
         ContentPart(type=ContentType.TEXT, text="Hello {{name}}!"),
-        ContentPart(type=ContentType.IMAGE_URL, image_url=ImageURL(url="https://example.com/image.jpg"))
+        ContentPart(type=ContentType.IMAGE_URL, image_url="https://example.com/image.jpg")
     ]
 
     variable_def_map = {"name": VariableDef(key="name", desc="User name", type=VariableType.STRING)}
@@ -1186,7 +1186,7 @@ def test_format_multi_part_text_rendering(prompt_provider):
     assert result[0].type == ContentType.TEXT
     assert result[0].text == "Hello Alice!"
     assert result[1].type == ContentType.IMAGE_URL
-    assert result[1].image_url.url == "https://example.com/image.jpg"
+    assert result[1].image_url == "https://example.com/image.jpg"
 
 def test_format_multi_part_variable_expansion(prompt_provider):
     """测试多媒体变量的展开"""
@@ -1199,7 +1199,7 @@ def test_format_multi_part_variable_expansion(prompt_provider):
     # 创建动态内容
     dynamic_parts = [
         ContentPart(type=ContentType.TEXT, text="Dynamic text"),
-        ContentPart(type=ContentType.IMAGE_URL, image_url=ImageURL(url="https://example.com/dynamic.jpg"))
+        ContentPart(type=ContentType.IMAGE_URL, image_url="https://example.com/dynamic.jpg")
     ]
 
     variable_def_map = {
@@ -1221,7 +1221,7 @@ def test_format_multi_part_variable_expansion(prompt_provider):
     assert result[1].type == ContentType.TEXT
     assert result[1].text == "Dynamic text"
     assert result[2].type == ContentType.IMAGE_URL
-    assert result[2].image_url.url == "https://example.com/dynamic.jpg"
+    assert result[2].image_url == "https://example.com/dynamic.jpg"
 
 def test_format_multi_part_empty_parts(prompt_provider):
     """测试空的多媒体内容列表"""
@@ -1267,7 +1267,7 @@ def test_format_multi_part_filter_empty_content(prompt_provider):
         ContentPart(type=ContentType.TEXT, text="Valid text"),
         ContentPart(type=ContentType.TEXT, text=None),  # 空文本
         ContentPart(type=ContentType.IMAGE_URL, image_url=None),  # 空图片
-        ContentPart(type=ContentType.IMAGE_URL, image_url=ImageURL(url="https://example.com/image.jpg"))
+        ContentPart(type=ContentType.IMAGE_URL, image_url="https://example.com/image.jpg")
     ]
 
     variable_def_map = {}
@@ -1283,13 +1283,13 @@ def test_format_multi_part_filter_empty_content(prompt_provider):
     # 应该过滤掉空内容的部分
     assert len(result) == 2
     assert result[0].text == "Valid text"
-    assert result[1].image_url.url == "https://example.com/image.jpg"
+    assert result[1].image_url == "https://example.com/image.jpg"
 
 def test_format_multi_part_jinja2_template(prompt_provider):
     """测试使用 Jinja2 模板的多媒体内容渲染"""
     parts = [
         ContentPart(type=ContentType.TEXT, text="Hello {{ name }}! You have {{ count }} messages."),
-        ContentPart(type=ContentType.IMAGE_URL, image_url=ImageURL(url="https://example.com/avatar.jpg"))
+        ContentPart(type=ContentType.IMAGE_URL, image_url="https://example.com/avatar.jpg")
     ]
 
     variable_def_map = {
@@ -1310,7 +1310,7 @@ def test_format_multi_part_jinja2_template(prompt_provider):
     assert result[0].type == ContentType.TEXT
     assert result[0].text == "Hello Bob! You have 3 messages."
     assert result[1].type == ContentType.IMAGE_URL
-    assert result[1].image_url.url == "https://example.com/avatar.jpg"
+    assert result[1].image_url == "https://example.com/avatar.jpg"
 
 def test_format_normal_messages_with_parts(prompt_provider):
     """测试包含 parts 字段的消息格式化"""
@@ -1330,7 +1330,7 @@ def test_format_normal_messages_with_parts(prompt_provider):
     ]
 
     image_parts = [
-        ContentPart(type=ContentType.IMAGE_URL, image_url=ImageURL(url="https://example.com/photo.jpg"))
+        ContentPart(type=ContentType.IMAGE_URL, image_url="https://example.com/photo.jpg")
     ]
 
     variables = {
@@ -1360,7 +1360,7 @@ def test_format_normal_messages_with_parts(prompt_provider):
 
     # 验证第二个部分（展开的图片）
     assert result[0].parts[1].type == ContentType.IMAGE_URL
-    assert result[0].parts[1].image_url.url == "https://example.com/photo.jpg"
+    assert result[0].parts[1].image_url == "https://example.com/photo.jpg"
 
 def test_prompt_format_with_multi_part_integration(prompt_provider):
     """测试多媒体内容的完整集成"""
@@ -1394,7 +1394,7 @@ def test_prompt_format_with_multi_part_integration(prompt_provider):
 
     # 创建用户图片内容
     user_image_parts = [
-        ContentPart(type=ContentType.IMAGE_URL, image_url=ImageURL(url="https://example.com/user_photo.jpg")),
+        ContentPart(type=ContentType.IMAGE_URL, image_url="https://example.com/user_photo.jpg"),
         ContentPart(type=ContentType.TEXT, text="What do you see in this image?")
     ]
 
@@ -1427,7 +1427,7 @@ def test_prompt_format_with_multi_part_integration(prompt_provider):
 
     # 第二个部分是展开的图片
     assert result[1].parts[1].type == ContentType.IMAGE_URL
-    assert result[1].parts[1].image_url.url == "https://example.com/user_photo.jpg"
+    assert result[1].parts[1].image_url == "https://example.com/user_photo.jpg"
 
     # 第三个部分是展开的文本
     assert result[1].parts[2].type == ContentType.TEXT

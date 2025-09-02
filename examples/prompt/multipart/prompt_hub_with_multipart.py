@@ -7,7 +7,7 @@ from typing import List
 
 import cozeloop
 from cozeloop import Message
-from cozeloop.entities.prompt import Role, ContentPart, ContentType, ImageURL
+from cozeloop.entities.prompt import Role, ContentPart, ContentType
 from cozeloop.spec.tracespec import CALL_OPTIONS, ModelCallOption, ModelMessage, ModelInput, ModelMessagePartType, ModelMessagePart, ModelImageURL
 
 
@@ -24,7 +24,7 @@ def _to_span_content_part(entity_part: ContentPart) -> ModelMessagePart:
     image_url = None
     if entity_part.image_url is not None:
         image_url = ModelImageURL(
-            url=entity_part.image_url.url
+            url=entity_part.image_url
         )
     return ModelMessagePart(
         type=_to_span_content_type(entity_part.type),
@@ -144,8 +144,7 @@ if __name__ == '__main__':
             # im1 is a multi-part variable, and the value is a list of ContentPart
             "im1": [
                 ContentPart(type=ContentType.TEXT, text="图片示例"),
-                ContentPart(type=ContentType.IMAGE_URL,
-                            image_url=ImageURL(url="https://example.com"))
+                ContentPart(type=ContentType.IMAGE_URL, image_url="https://dummyimage.com/600x400/4CAF50/fff&text="),
             ],
             # Other variables in the prompt template that are not provided with corresponding values will be
             # considered as empty values.

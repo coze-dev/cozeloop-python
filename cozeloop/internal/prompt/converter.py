@@ -244,7 +244,7 @@ def _to_span_content_part(entity_part: EntityContentPart) -> ModelMessagePart:
     image_url = None
     if entity_part.image_url is not None:
         image_url = ModelImageURL(
-            url=entity_part.image_url.url
+            url=entity_part.image_url
         )
     return ModelMessagePart(
         type=_to_span_content_type(entity_part.type),
