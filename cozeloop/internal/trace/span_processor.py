@@ -158,7 +158,7 @@ class BatchSpanProcessor(SpanProcessor):
             try:
                 upload_spans, upload_files = transfer_to_upload_span_and_file(spans)
             except Exception as e:
-                logger.warning(f"transfer_to_upload_span_and_file fail")
+                logger.warning(f"transfer_to_upload_span_and_file fail, {e}")
                 return
 
             event_err_msg = ""

@@ -39,6 +39,7 @@ _cache_lock = threading.Lock()
 _default_client = None
 _client_lock = threading.Lock()
 
+
 class APIBasePath:
     def __init__(
             self,
@@ -73,7 +74,7 @@ def new_client(
         api_base_path: Optional[APIBasePath] = None,
         trace_queue_conf: Optional[QueueConf] = None,
 ) -> Client:
-    cache_key = _generate_cache_key( # all args are used to generate cache key
+    cache_key = _generate_cache_key(  # all args are used to generate cache key
         api_base_url,
         workspace_id,
         api_token,
@@ -191,6 +192,7 @@ class _LoopClient(Client):
             def combined_processor(event_info: FinishEventInfo):
                 default_finish_event_processor(event_info)
                 trace_finish_event_processor(event_info)
+
             finish_pro = combined_processor
         span_upload_path = None
         file_upload_path = None
@@ -283,9 +285,14 @@ class _LoopClient(Client):
                 return self._trace_provider.start_span(name=name, span_type=span_type, start_time=start_time,
                                                        start_new_trace=start_new_trace)
             else:
+                baggage = {}
+                if isinstance(child_of.baggage, dict):  # SpanContext
+                    baggage = child_of.baggage
+                else:
+                    baggage = child_of.baggage()  # Span
                 return self._trace_provider.start_span(name=name, span_type=span_type, start_time=start_time,
                                                        parent_span_id=child_of.span_id, trace_id=child_of.trace_id,
-                                                       baggage=child_of.baggage(), start_new_trace=start_new_trace)
+                                                       baggage=baggage, start_new_trace=start_new_trace)
         except Exception as e:
             logger.warning(f"Start span failed, returning noop span. Error: {e}")
             return NOOP_SPAN
