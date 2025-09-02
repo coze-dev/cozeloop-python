@@ -46,6 +46,7 @@ class ModelMessagePartType(str, Enum):
     TEXT = "text"
     IMAGE = "image_url"
     FILE = "file_url"
+    MULTI_PART_VARIABLE = "multi_part_variable" # Internal use only, unless you fully comprehend its functionality and risks
 
 
 class ModelMessagePart(BaseModel):

@@ -2,14 +2,35 @@
 # SPDX-License-Identifier: MIT
 
 import json
-import os
 import time
 from typing import List
 
 import cozeloop
 from cozeloop import Message
 from cozeloop.entities.prompt import Role, ContentPart, ContentType, ImageURL
-from cozeloop.spec.tracespec import CALL_OPTIONS, ModelCallOption, ModelMessage, ModelInput
+from cozeloop.spec.tracespec import CALL_OPTIONS, ModelCallOption, ModelMessage, ModelInput, ModelMessagePartType, ModelMessagePart, ModelImageURL
+
+
+def _to_span_content_type(entity_type: ContentType) -> ModelMessagePartType:
+    span_content_type_mapping = {
+        ContentType.TEXT: ModelMessagePartType.TEXT,
+        ContentType.IMAGE_URL: ModelMessagePartType.IMAGE,
+        ContentType.MULTI_PART_VARIABLE: ModelMessagePartType.MULTI_PART_VARIABLE,
+    }
+    return span_content_type_mapping.get(entity_type, ModelMessagePartType.TEXT)
+
+
+def _to_span_content_part(entity_part: ContentPart) -> ModelMessagePart:
+    image_url = None
+    if entity_part.image_url is not None:
+        image_url = ModelImageURL(
+            url=entity_part.image_url.url
+        )
+    return ModelMessagePart(
+        type=_to_span_content_type(entity_part.type),
+        text=entity_part.text,
+        image_url=image_url,
+    )
 
 
 def convert_model_input(messages: List[Message]) -> ModelInput:
@@ -17,7 +38,8 @@ def convert_model_input(messages: List[Message]) -> ModelInput:
     for message in messages:
         model_messages.append(ModelMessage(
             role=str(message.role),
-            content=message.content if message.content is not None else ""
+            content=message.content if message.content is not None else "",
+            parts=[_to_span_content_part(part) for part in message.parts] if message.parts else None
         ))
 
     return ModelInput(
@@ -45,7 +67,7 @@ class LLMRunner:
             output_token = 1211
 
             # set tag key: `input`
-            span.set_input(convert_model_input(input_data))
+            span.set_input(convert_model_input(input_data).model_dump_json(exclude_none=True))
             # set tag key: `output`
             span.set_output(output)
             # set tag key: `model_provider`, e.g., openai, etc.
@@ -100,15 +122,12 @@ if __name__ == '__main__':
         workspace_id="7496795200791511052",
         api_token="pat_MncpzaGch5UIHuModf3mv7S6IpNkG8uer265shnDPML8MRiG0gJrYoT9izOAOhdd")
 
-    os.environ["x_tt_env"] = "ppe_multipart"
-    os.environ["x_use_ppe"] = "1"
-
     # 3. new root span
     rootSpan = client.start_span("root_span", "main_span")
 
     # 4. Get the prompt
     # If no specific version is specified, the latest version of the corresponding prompt will be obtained
-    prompt = client.get_prompt(prompt_key="image1", version="0.0.3")
+    prompt = client.get_prompt(prompt_key="image1", version="0.0.4")
     if prompt is not None:
         # Get messages of the prompt
         if prompt.prompt_template is not None:
@@ -124,26 +143,17 @@ if __name__ == '__main__':
         formatted_messages = client.prompt_format(prompt, {
             "num": "2",
             "count": 10,
-            "format": {
-                "image1": {
-                    "city": "bejing",
-                    "street": "123 Main",
-                },
-                "image2": {
-                    "city": "bejing",
-                    "street": "123 Main",
-                },
-            },
             # im1 is a multi-part variable, and the value is a list of ContentPart
             "im1": [
                 ContentPart(type=ContentType.TEXT, text="图片示例"),
-                ContentPart(type=ContentType.IMAGE_URL,image_url=ImageURL(url="https://example.com/image.jpg")),
+                ContentPart(type=ContentType.IMAGE_URL,
+                            image_url=ImageURL(url="https://dummyimage.com/600x400/4CAF50/fff&text=")),
                 ContentPart(type=ContentType.TEXT),
                 ContentPart(type=ContentType.IMAGE_URL),
             ],
             # Placeholder variable type should be Message/List[Message]
-            "placeholder1": [Message(role=Role.USER, content="Hello!"),
-                             Message(role=Role.ASSISTANT, content="Hello!")]
+            "P1": [Message(role=Role.USER, content="Hello!"),
+                   Message(role=Role.ASSISTANT, content="Hello!")]
             # Other variables in the prompt template that are not provided with corresponding values will be
             # considered as empty values.
         })
@@ -161,3 +171,4 @@ if __name__ == '__main__':
     # Note that flush will block and wait for the report to complete, and it may cause frequent reporting,
     # affecting performance.
     client.flush()
+    time.sleep(2)
