@@ -559,7 +559,7 @@ class Span(span.Span, SpanContext, ABC):
     def to_header_baggage(self) -> str:
         if not self.baggage:
             return ""
-        return ",".join(f"{k}={v}" for k, v in self.baggage().items())
+        return ",".join(f"{k}={v}" for k, v in self.baggage().items() if k and v)
 
     def to_header_parent(self) -> str:
         return f"{GLOBAL_TRACE_VERSION:02x}-{self.trace_id}-{self.span_id}-{self.flags:02x}"
@@ -630,6 +630,9 @@ def parse_comma_separated_map(src: str, cover: bool) -> Dict[str, str]:
 
         key = urllib.parse.unquote(kv[0])
         value = urllib.parse.unquote(kv[1])
+
+        if not key or not value:
+            continue
 
         if key not in baggage or cover:
             baggage[key] = value
