@@ -41,6 +41,7 @@ class VariableType(str, Enum):
     ARRAY_INTEGER = "array<integer>"
     ARRAY_FLOAT = "array<float>"
     ARRAY_OBJECT = "array<object>"
+    MULTI_PART = "multi_part"
 
 
 class ToolChoiceType(str, Enum):
@@ -48,9 +49,20 @@ class ToolChoiceType(str, Enum):
     NONE = "none"
 
 
+class ContentType(str, Enum):
+    TEXT = "text"
+    MULTI_PART_VARIABLE = "multi_part_variable"
+
+
+class ContentPart(BaseModel):
+    type: ContentType
+    text: Optional[str] = None
+
+
 class Message(BaseModel):
     role: Role
     content: Optional[str] = None
+    parts: Optional[List[ContentPart]] = None
 
 
 class VariableDef(BaseModel):

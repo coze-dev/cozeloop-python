@@ -3,7 +3,8 @@
 
 from typing import List, Dict
 
-from cozeloop.spec.tracespec import PromptInput, PromptOutput, ModelMessage, PromptArgument
+from cozeloop.spec.tracespec import PromptInput, PromptOutput, ModelMessage, PromptArgument, ModelMessagePart, \
+    ModelMessagePartType, ModelImageURL, PromptArgumentValueType
 from cozeloop.entities.prompt import (
     Prompt as EntityPrompt,
     Message as EntityMessage,
@@ -19,6 +20,8 @@ from cozeloop.entities.prompt import (
     VariableType as EntityVariableType,
     ToolType as EntityToolType,
     PromptVariable,
+    ContentType as EntityContentType,
+    ContentPart as EntityContentPart,
 )
 
 from cozeloop.internal.prompt.openapi import (
@@ -34,7 +37,9 @@ from cozeloop.internal.prompt.openapi import (
     ToolType as OpenAPIToolType,
     Role as OpenAPIRole,
     ToolChoiceType as OpenAPIChoiceType,
-    TemplateType as OpenAPITemplateType
+    TemplateType as OpenAPITemplateType,
+    ContentType as OpenAPIContentType,
+    ContentPart as OpenAPIContentPart,
 )
 
 
@@ -49,10 +54,26 @@ def _convert_role(openapi_role: OpenAPIRole) -> EntityRole:
     return role_mapping.get(openapi_role, EntityRole.USER)  # Default to USER type
 
 
+def _convert_content_type(openapi_type: OpenAPIContentType) -> EntityContentType:
+    content_type_mapping = {
+        OpenAPIContentType.TEXT: EntityContentType.TEXT,
+        OpenAPIContentType.MULTI_PART_VARIABLE: EntityContentType.MULTI_PART_VARIABLE,
+    }
+    return content_type_mapping.get(openapi_type, EntityContentType.TEXT)
+
+
+def to_content_part(openapi_part: OpenAPIContentPart) -> EntityContentPart:
+    return EntityContentPart(
+        type=_convert_content_type(openapi_part.type),
+        text=openapi_part.text
+    )
+
+
 def _convert_message(msg: OpenAPIMessage) -> EntityMessage:
     return EntityMessage(
         role=_convert_role(msg.role),
-        content=msg.content
+        content=msg.content,
+        parts=[to_content_part(part) for part in msg.parts] if msg.parts else None
     )
 
 
@@ -68,7 +89,8 @@ def _convert_variable_type(openapi_type: OpenAPIVariableType) -> EntityVariableT
         OpenAPIVariableType.ARRAY_INTEGER: EntityVariableType.ARRAY_INTEGER,
         OpenAPIVariableType.ARRAY_FLOAT: EntityVariableType.ARRAY_FLOAT,
         OpenAPIVariableType.ARRAY_BOOLEAN: EntityVariableType.ARRAY_BOOLEAN,
-        OpenAPIVariableType.ARRAY_OBJECT: EntityVariableType.ARRAY_OBJECT
+        OpenAPIVariableType.ARRAY_OBJECT: EntityVariableType.ARRAY_OBJECT,
+        OpenAPIVariableType.MULTI_PART: EntityVariableType.MULTI_PART,
     }
     return type_mapping.get(openapi_type, EntityVariableType.STRING)  # Default to STRING type
 
@@ -176,15 +198,56 @@ def _to_span_messages(messages: List[EntityMessage]) -> List[ModelMessage]:
     return [
         ModelMessage(
             role=msg.role,
-            content=msg.content
+            content=msg.content,
+            parts=[_to_span_content_part(part) for part in msg.parts] if msg.parts else None
         ) for msg in messages
     ]
 
 
 def _to_span_arguments(arguments: Dict[str, PromptVariable]) -> List[PromptArgument]:
     return [
-        PromptArgument(
-            key=key,
-            value=value
-        ) for key, value in arguments.items()
+        to_span_argument(key, value) for key, value in arguments.items()
     ]
+
+
+def to_span_argument(key: str, value: any) -> PromptArgument:
+    converted_value = str(value)
+    value_type = PromptArgumentValueType.TEXT
+    # 判断是否是多模态变量
+    if isinstance(value, list) and all(isinstance(part, EntityContentPart) for part in value):
+        value_type = PromptArgumentValueType.MODEL_MESSAGE_PART
+        converted_value = [_to_span_content_part(part) for part in value]
+
+    # 判断是否是placeholder变量
+    if isinstance(value, list) and all(isinstance(part, EntityMessage) for part in value):
+        value_type = PromptArgumentValueType.MODEL_MESSAGE
+        converted_value = _to_span_messages(value)
+
+    return PromptArgument(
+        key=key,
+        value=converted_value,
+        value_type=value_type,
+        source="input"
+    )
+
+
+def _to_span_content_type(entity_type: EntityContentType) -> ModelMessagePartType:
+    span_content_type_mapping = {
+        EntityContentType.TEXT: ModelMessagePartType.TEXT,
+        EntityContentType.IMAGE_URL: ModelMessagePartType.IMAGE,
+        EntityContentType.MULTI_PART_VARIABLE: ModelMessagePartType.MULTI_PART_VARIABLE,
+    }
+    return span_content_type_mapping.get(entity_type, ModelMessagePartType.TEXT)
+
+
+def _to_span_content_part(entity_part: EntityContentPart) -> ModelMessagePart:
+    image_url = None
+    if entity_part.image_url is not None:
+        image_url = ModelImageURL(
+            url=entity_part.image_url
+        )
+    return ModelMessagePart(
+        type=_to_span_content_type(entity_part.type),
+        text=entity_part.text,
+        image_url=image_url,
+    )

@@ -4,7 +4,8 @@
 from unittest.mock import MagicMock
 
 from cozeloop.entities.prompt import (
-    Message as EntityMessage
+    Message as EntityMessage,
+    ContentType as EntityContentType
 )
 from cozeloop.entities.prompt import (
     Role as EntityRole,
@@ -30,7 +31,9 @@ from cozeloop.internal.prompt.converter import (
     _to_span_prompt_input,
     _to_span_prompt_output,
     _to_span_messages,
-    _to_span_arguments
+    _to_span_arguments,
+    _convert_content_type,
+    to_content_part
 )
 from cozeloop.internal.prompt.openapi import (
     Prompt as OpenAPIPrompt,
@@ -45,7 +48,9 @@ from cozeloop.internal.prompt.openapi import (
     ToolType as OpenAPIToolType,
     Role as OpenAPIRole,
     ToolChoiceType as OpenAPIChoiceType,
-    TemplateType as OpenAPITemplateType
+    TemplateType as OpenAPITemplateType,
+    ContentType as OpenAPIContentType,
+    ContentPart as OpenAPIContentPart
 )
 
 
@@ -403,4 +408,99 @@ def test_to_span_prompt_output():
     # Verify conversion
     assert len(span_output.prompts) == 1
     assert span_output.prompts[0].role == EntityRole.ASSISTANT
-    assert span_output.prompts[0].content == "Assistant response" 
+    assert span_output.prompts[0].content == "Assistant response"
+
+def test_convert_content_type():
+    # Test conversion of content types
+    assert _convert_content_type(OpenAPIContentType.TEXT) == EntityContentType.TEXT
+    assert _convert_content_type(OpenAPIContentType.MULTI_PART_VARIABLE) == EntityContentType.MULTI_PART_VARIABLE
+
+    # Test default case with invalid type
+    mock_invalid_type = MagicMock()
+    assert _convert_content_type(mock_invalid_type) == EntityContentType.TEXT
+
+def test_to_content_part():
+    # Test text content part conversion
+    openapi_text_part = OpenAPIContentPart(
+        type=OpenAPIContentType.TEXT,
+        text="Hello world"
+    )
+
+    entity_part = to_content_part(openapi_text_part)
+    assert entity_part.type == EntityContentType.TEXT
+    assert entity_part.text == "Hello world"
+    assert entity_part.image_url is None
+
+    # Test multi-part variable content part conversion
+    openapi_multipart_part = OpenAPIContentPart(
+        type=OpenAPIContentType.MULTI_PART_VARIABLE,
+        text="image_variable"
+    )
+
+    entity_multipart_part = to_content_part(openapi_multipart_part)
+    assert entity_multipart_part.type == EntityContentType.MULTI_PART_VARIABLE
+    assert entity_multipart_part.text == "image_variable"
+    assert entity_multipart_part.image_url is None
+
+def test_convert_message_with_parts():
+    # Create OpenAPI content parts
+    text_part = OpenAPIContentPart(type=OpenAPIContentType.TEXT, text="Hello")
+    multipart_part = OpenAPIContentPart(type=OpenAPIContentType.MULTI_PART_VARIABLE, text="image_var")
+
+    # Create OpenAPI message with parts
+    openapi_message = OpenAPIMessage(
+        role=OpenAPIRole.USER,
+        content="User message",
+        parts=[text_part, multipart_part]
+    )
+
+    # Convert message
+    entity_message = _convert_message(openapi_message)
+
+    # Verify conversion
+    assert entity_message.role == EntityRole.USER
+    assert entity_message.content == "User message"
+    assert entity_message.parts is not None
+    assert len(entity_message.parts) == 2
+
+    # Verify first part (text)
+    assert entity_message.parts[0].type == EntityContentType.TEXT
+    assert entity_message.parts[0].text == "Hello"
+    assert entity_message.parts[0].image_url is None
+
+    # Verify second part (multi-part variable)
+    assert entity_message.parts[1].type == EntityContentType.MULTI_PART_VARIABLE
+    assert entity_message.parts[1].text == "image_var"
+    assert entity_message.parts[1].image_url is None
+
+def test_convert_message_without_parts():
+    # Create OpenAPI message without parts
+    openapi_message = OpenAPIMessage(
+        role=OpenAPIRole.ASSISTANT,
+        content="Assistant response"
+    )
+
+    # Convert message
+    entity_message = _convert_message(openapi_message)
+
+    # Verify conversion
+    assert entity_message.role == EntityRole.ASSISTANT
+    assert entity_message.content == "Assistant response"
+    assert entity_message.parts is None
+
+def test_convert_variable_type_multi_part():
+    # Test MULTI_PART variable type conversion
+    assert _convert_variable_type(OpenAPIVariableType.MULTI_PART) == EntityVariableType.MULTI_PART
+
+    # Test all existing variable types still work
+    assert _convert_variable_type(OpenAPIVariableType.STRING) == EntityVariableType.STRING
+    assert _convert_variable_type(OpenAPIVariableType.PLACEHOLDER) == EntityVariableType.PLACEHOLDER
+    assert _convert_variable_type(OpenAPIVariableType.BOOLEAN) == EntityVariableType.BOOLEAN
+    assert _convert_variable_type(OpenAPIVariableType.INTEGER) == EntityVariableType.INTEGER
+    assert _convert_variable_type(OpenAPIVariableType.FLOAT) == EntityVariableType.FLOAT
+    assert _convert_variable_type(OpenAPIVariableType.OBJECT) == EntityVariableType.OBJECT
+    assert _convert_variable_type(OpenAPIVariableType.ARRAY_STRING) == EntityVariableType.ARRAY_STRING
+    assert _convert_variable_type(OpenAPIVariableType.ARRAY_BOOLEAN) == EntityVariableType.ARRAY_BOOLEAN
+    assert _convert_variable_type(OpenAPIVariableType.ARRAY_INTEGER) == EntityVariableType.ARRAY_INTEGER
+    assert _convert_variable_type(OpenAPIVariableType.ARRAY_FLOAT) == EntityVariableType.ARRAY_FLOAT
+    assert _convert_variable_type(OpenAPIVariableType.ARRAY_OBJECT) == EntityVariableType.ARRAY_OBJECT

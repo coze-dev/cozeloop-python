@@ -6,7 +6,8 @@ import pytest
 from unittest.mock import MagicMock, patch, call
 
 from cozeloop.entities.prompt import (
-    Prompt, Message, VariableDef, VariableType, TemplateType, Role, PromptVariable
+    Prompt, Message, VariableDef, VariableType, TemplateType, Role, PromptVariable,
+    ContentType, ContentPart
 )
 from cozeloop.internal import consts
 from cozeloop.internal.consts.error import RemoteServiceError
@@ -1124,3 +1125,310 @@ def test_prompt_format_jinja2_edge_cases(prompt_provider):
     assert result[0].content == ""
     assert result[1].content == "   "
     assert result[2].content == "Static text"
+
+# =============================================================================
+# multi_part相关测试
+# =============================================================================
+def test_validate_variable_values_type_multi_part_valid(prompt_provider):
+    """测试有效的 MULTI_PART 类型变量"""
+    # 创建有效的 ContentPart 列表
+    content_parts = [
+        ContentPart(type=ContentType.TEXT, text="Hello"),
+        ContentPart(type=ContentType.IMAGE_URL, image_url="https://example.com/image.jpg")
+    ]
+
+    var_defs = [VariableDef(key="multi_content", desc="Multi-part content", type=VariableType.MULTI_PART)]
+    variables = {"multi_content": content_parts}
+
+    # 应该不抛出异常
+    prompt_provider._validate_variable_values_type(var_defs, variables)
+
+def test_validate_variable_values_type_multi_part_invalid_not_list(prompt_provider):
+    """测试无效的 MULTI_PART 类型变量 - 不是列表"""
+    var_defs = [VariableDef(key="multi_content", desc="Multi-part content", type=VariableType.MULTI_PART)]
+    variables = {"multi_content": "not a list"}  # 字符串而不是列表
+
+    with pytest.raises(ValueError) as excinfo:
+        prompt_provider._validate_variable_values_type(var_defs, variables)
+
+    assert "type of variable 'multi_content' should be multi_part" in str(excinfo.value)
+
+def test_validate_variable_values_type_multi_part_invalid_wrong_element_type(prompt_provider):
+    """测试无效的 MULTI_PART 类型变量 - 元素类型错误"""
+    var_defs = [VariableDef(key="multi_content", desc="Multi-part content", type=VariableType.MULTI_PART)]
+    variables = {"multi_content": ["not a ContentPart", ContentPart(type=ContentType.TEXT, text="Hello")]}
+
+    with pytest.raises(ValueError) as excinfo:
+        prompt_provider._validate_variable_values_type(var_defs, variables)
+
+    assert "type of variable 'multi_content' should be multi_part" in str(excinfo.value)
+
+def test_format_multi_part_text_rendering(prompt_provider):
+    """测试多媒体内容中文本部分的渲染"""
+    # 创建包含模板变量的 ContentPart 列表
+    parts = [
+        ContentPart(type=ContentType.TEXT, text="Hello {{name}}!"),
+        ContentPart(type=ContentType.IMAGE_URL, image_url="https://example.com/image.jpg")
+    ]
+
+    variable_def_map = {"name": VariableDef(key="name", desc="User name", type=VariableType.STRING)}
+    variables = {"name": "Alice"}
+
+    result = prompt_provider.format_multi_part(
+        TemplateType.NORMAL,
+        parts,
+        variable_def_map,
+        variables
+    )
+
+    # 验证结果
+    assert len(result) == 2
+    assert result[0].type == ContentType.TEXT
+    assert result[0].text == "Hello Alice!"
+    assert result[1].type == ContentType.IMAGE_URL
+    assert result[1].image_url == "https://example.com/image.jpg"
+
+def test_format_multi_part_variable_expansion(prompt_provider):
+    """测试多媒体变量的展开"""
+    # 创建包含多媒体变量的 ContentPart 列表
+    parts = [
+        ContentPart(type=ContentType.TEXT, text="Introduction:"),
+        ContentPart(type=ContentType.MULTI_PART_VARIABLE, text="dynamic_content")
+    ]
+
+    # 创建动态内容
+    dynamic_parts = [
+        ContentPart(type=ContentType.TEXT, text="Dynamic text"),
+        ContentPart(type=ContentType.IMAGE_URL, image_url="https://example.com/dynamic.jpg")
+    ]
+
+    variable_def_map = {
+        "dynamic_content": VariableDef(key="dynamic_content", desc="Dynamic content", type=VariableType.MULTI_PART)
+    }
+    variables = {"dynamic_content": dynamic_parts}
+
+    result = prompt_provider.format_multi_part(
+        TemplateType.NORMAL,
+        parts,
+        variable_def_map,
+        variables
+    )
+
+    # 验证结果
+    assert len(result) == 3
+    assert result[0].type == ContentType.TEXT
+    assert result[0].text == "Introduction:"
+    assert result[1].type == ContentType.TEXT
+    assert result[1].text == "Dynamic text"
+    assert result[2].type == ContentType.IMAGE_URL
+    assert result[2].image_url == "https://example.com/dynamic.jpg"
+
+def test_format_multi_part_empty_parts(prompt_provider):
+    """测试空的多媒体内容列表"""
+    parts = []
+    variable_def_map = {}
+    variables = {}
+
+    result = prompt_provider.format_multi_part(
+        TemplateType.NORMAL,
+        parts,
+        variable_def_map,
+        variables
+    )
+
+    assert result == []
+
+def test_format_multi_part_none_parts(prompt_provider):
+    """测试包含 None 元素的多媒体内容列表"""
+    parts = [
+        ContentPart(type=ContentType.TEXT, text="Valid part"),
+        None,
+        ContentPart(type=ContentType.TEXT, text="Another valid part")
+    ]
+
+    variable_def_map = {}
+    variables = {}
+
+    result = prompt_provider.format_multi_part(
+        TemplateType.NORMAL,
+        parts,
+        variable_def_map,
+        variables
+    )
+
+    # 应该过滤掉 None 元素
+    assert len(result) == 2
+    assert result[0].text == "Valid part"
+    assert result[1].text == "Another valid part"
+
+def test_format_multi_part_filter_empty_content(prompt_provider):
+    """测试过滤空内容的多媒体部分"""
+    parts = [
+        ContentPart(type=ContentType.TEXT, text="Valid text"),
+        ContentPart(type=ContentType.TEXT, text=None),  # 空文本
+        ContentPart(type=ContentType.IMAGE_URL, image_url=None),  # 空图片
+        ContentPart(type=ContentType.IMAGE_URL, image_url="https://example.com/image.jpg")
+    ]
+
+    variable_def_map = {}
+    variables = {}
+
+    result = prompt_provider.format_multi_part(
+        TemplateType.NORMAL,
+        parts,
+        variable_def_map,
+        variables
+    )
+
+    # 应该过滤掉空内容的部分
+    assert len(result) == 2
+    assert result[0].text == "Valid text"
+    assert result[1].image_url == "https://example.com/image.jpg"
+
+def test_format_multi_part_jinja2_template(prompt_provider):
+    """测试使用 Jinja2 模板的多媒体内容渲染"""
+    parts = [
+        ContentPart(type=ContentType.TEXT, text="Hello {{ name }}! You have {{ count }} messages."),
+        ContentPart(type=ContentType.IMAGE_URL, image_url="https://example.com/avatar.jpg")
+    ]
+
+    variable_def_map = {
+        "name": VariableDef(key="name", desc="User name", type=VariableType.STRING),
+        "count": VariableDef(key="count", desc="Message count", type=VariableType.INTEGER)
+    }
+    variables = {"name": "Bob", "count": 3}
+
+    result = prompt_provider.format_multi_part(
+        TemplateType.JINJA2,
+        parts,
+        variable_def_map,
+        variables
+    )
+
+    # 验证结果
+    assert len(result) == 2
+    assert result[0].type == ContentType.TEXT
+    assert result[0].text == "Hello Bob! You have 3 messages."
+    assert result[1].type == ContentType.IMAGE_URL
+    assert result[1].image_url == "https://example.com/avatar.jpg"
+
+def test_format_normal_messages_with_parts(prompt_provider):
+    """测试包含 parts 字段的消息格式化"""
+    # 创建包含 parts 的消息
+    parts = [
+        ContentPart(type=ContentType.TEXT, text="Hello {{name}}!"),
+        ContentPart(type=ContentType.MULTI_PART_VARIABLE, text="images")
+    ]
+
+    message = Message(role=Role.USER, content="User message with {{greeting}}", parts=parts)
+
+    # 创建变量定义和值
+    var_defs = [
+        VariableDef(key="name", desc="User name", type=VariableType.STRING),
+        VariableDef(key="greeting", desc="Greeting", type=VariableType.STRING),
+        VariableDef(key="images", desc="Image parts", type=VariableType.MULTI_PART)
+    ]
+
+    image_parts = [
+        ContentPart(type=ContentType.IMAGE_URL, image_url="https://example.com/photo.jpg")
+    ]
+
+    variables = {
+        "name": "Alice",
+        "greeting": "Welcome",
+        "images": image_parts
+    }
+
+    # 调用方法
+    result = prompt_provider._format_normal_messages(
+        TemplateType.NORMAL,
+        [message],
+        var_defs,
+        variables
+    )
+
+    # 验证结果
+    assert len(result) == 1
+    assert result[0].role == Role.USER
+    assert result[0].content == "User message with Welcome"
+    assert result[0].parts is not None
+    assert len(result[0].parts) == 2
+
+    # 验证第一个部分（文本）
+    assert result[0].parts[0].type == ContentType.TEXT
+    assert result[0].parts[0].text == "Hello Alice!"
+
+    # 验证第二个部分（展开的图片）
+    assert result[0].parts[1].type == ContentType.IMAGE_URL
+    assert result[0].parts[1].image_url == "https://example.com/photo.jpg"
+
+def test_prompt_format_with_multi_part_integration(prompt_provider):
+    """测试多媒体内容的完整集成"""
+    # 创建包含多媒体内容的消息
+    system_parts = [
+        ContentPart(type=ContentType.TEXT, text="You are analyzing images for {{task_type}}."),
+    ]
+
+    user_parts = [
+        ContentPart(type=ContentType.TEXT, text="Please analyze this image:"),
+        ContentPart(type=ContentType.MULTI_PART_VARIABLE, text="user_images")
+    ]
+
+    system_message = Message(role=Role.SYSTEM, parts=system_parts)
+    user_message = Message(role=Role.USER, parts=user_parts)
+
+    # 创建变量定义
+    var_defs = [
+        VariableDef(key="task_type", desc="Task type", type=VariableType.STRING),
+        VariableDef(key="user_images", desc="User images", type=VariableType.MULTI_PART)
+    ]
+
+    # 创建 prompt 模板
+    prompt_template = MagicMock()
+    prompt_template.template_type = TemplateType.NORMAL
+    prompt_template.messages = [system_message, user_message]
+    prompt_template.variable_defs = var_defs
+
+    prompt = MagicMock(spec=Prompt)
+    prompt.prompt_template = prompt_template
+
+    # 创建用户图片内容
+    user_image_parts = [
+        ContentPart(type=ContentType.IMAGE_URL, image_url="https://example.com/user_photo.jpg"),
+        ContentPart(type=ContentType.TEXT, text="What do you see in this image?")
+    ]
+
+    variables = {
+        "task_type": "object detection",
+        "user_images": user_image_parts
+    }
+
+    # 调用方法
+    result = prompt_provider.prompt_format(prompt, variables)
+
+    # 验证结果
+    assert len(result) == 2
+
+    # 验证系统消息
+    assert result[0].role == Role.SYSTEM
+    assert result[0].parts is not None
+    assert len(result[0].parts) == 1
+    assert result[0].parts[0].type == ContentType.TEXT
+    assert result[0].parts[0].text == "You are analyzing images for object detection."
+
+    # 验证用户消息
+    assert result[1].role == Role.USER
+    assert result[1].parts is not None
+    assert len(result[1].parts) == 3
+
+    # 第一个部分是原始文本
+    assert result[1].parts[0].type == ContentType.TEXT
+    assert result[1].parts[0].text == "Please analyze this image:"
+
+    # 第二个部分是展开的图片
+    assert result[1].parts[1].type == ContentType.IMAGE_URL
+    assert result[1].parts[1].image_url == "https://example.com/user_photo.jpg"
+
+    # 第三个部分是展开的文本
+    assert result[1].parts[2].type == ContentType.TEXT
+    assert result[1].parts[2].text == "What do you see in this image?"

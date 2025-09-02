@@ -9,7 +9,7 @@ from jinja2.sandbox import SandboxedEnvironment
 from jinja2.utils import missing, object_type_repr
 
 from cozeloop.entities.prompt import (Prompt, Message, VariableDef, VariableType, TemplateType, Role,
-                                      PromptVariable)
+                                      PromptVariable, ContentPart, ContentType)
 from cozeloop.internal import consts
 from cozeloop.internal.consts.error import RemoteServiceError
 from cozeloop.internal.httpclient.client import Client
@@ -175,6 +175,9 @@ class PromptProvider:
             elif var_def.type == VariableType.ARRAY_FLOAT:
                 if not isinstance(val, list) or not all(isinstance(item, float) for item in val):
                     raise ValueError(f"type of variable '{var_def.key}' should be array<float>")
+            elif var_def.type == VariableType.MULTI_PART:
+                if not isinstance(val, list) or not all(isinstance(item, ContentPart) for item in val):
+                    raise ValueError(f"type of variable '{var_def.key}' should be multi_part")
 
     def _format_normal_messages(
             self,
@@ -204,10 +207,59 @@ class PromptProvider:
                     variables
                 )
                 message.content = rendered_content
+            # Render parts
+            if message.parts:
+                message.parts = self.format_multi_part(
+                    template_type,
+                    message.parts,
+                    variable_def_map,
+                    variables
+                )
 
             results.append(message)
 
         return results
+
+    def format_multi_part(
+            self,
+            template_type: TemplateType,
+            parts: List[Optional[ContentPart]],
+            def_map: Dict[str, VariableDef],
+            val_map: Dict[str, Any]) -> List[ContentPart]:
+        formatted_parts: List[ContentPart] = []
+
+        # Render text
+        for part in parts:
+            if part is None:
+                continue
+            if part.type == ContentType.TEXT and part.text is not None:
+                rendered_text = self._render_text_content(
+                    template_type, part.text, def_map, val_map
+                )
+                part.text = rendered_text
+
+        # Render multi-part variable
+        for part in parts:
+            if part is None:
+                continue
+            if part.type == ContentType.MULTI_PART_VARIABLE and part.text is not None:
+                multi_part_key = part.text
+                if multi_part_key in def_map and multi_part_key in val_map:
+                    vardef = def_map[multi_part_key]
+                    value = val_map[multi_part_key]
+                    if vardef is not None and value is not None and vardef.type == VariableType.MULTI_PART:
+                            formatted_parts.extend(value)
+            else:
+                formatted_parts.append(part)
+
+        # Filter
+        filtered: List[ContentPart] = []
+        for pt in formatted_parts:
+            if pt is None:
+                continue
+            if pt.text is not None or pt.image_url is not None:
+                filtered.append(pt)
+        return filtered
 
     def _format_placeholder_messages(
             self,

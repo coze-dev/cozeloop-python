@@ -25,7 +25,9 @@ from cozeloop.internal.prompt.openapi import (
     Tool,
     ToolCallConfig,
     LLMConfig,
-    PromptTemplate
+    PromptTemplate,
+    ContentType,
+    ContentPart
 )
 
 
@@ -225,23 +227,76 @@ def test_enum_values():
     # Test VariableType enum values
     assert VariableType.STRING == "string"
     assert VariableType.PLACEHOLDER == "placeholder"
-    
+    assert VariableType.MULTI_PART == "multi_part"
+
     # Test ToolChoiceType enum values
     assert ToolChoiceType.AUTO == "auto"
     assert ToolChoiceType.NONE == "none"
 
+    # Test ContentType enum values
+    assert ContentType.TEXT == "text"
+    assert ContentType.MULTI_PART_VARIABLE == "multi_part_variable"
 
 def test_message_model():
     # Test Message model with required fields
     message = Message(role=Role.USER)
     assert message.role == Role.USER
     assert message.content is None
+    assert message.parts is None
+
     
     # Test Message model with all fields
     message = Message(role=Role.SYSTEM, content="System message")
     assert message.role == Role.SYSTEM
     assert message.content == "System message"
+    assert message.parts is None
 
+
+def test_message_model_with_parts():
+    # Test Message model with parts
+    text_part = ContentPart(type=ContentType.TEXT, text="Hello")
+    multipart_part = ContentPart(type=ContentType.MULTI_PART_VARIABLE, text="image_var")
+
+    message = Message(
+        role=Role.USER,
+        content="User message",
+        parts=[text_part, multipart_part]
+    )
+
+    assert message.role == Role.USER
+    assert message.content == "User message"
+    assert message.parts is not None
+    assert len(message.parts) == 2
+
+    # Verify parts
+    assert message.parts[0].type == ContentType.TEXT
+    assert message.parts[0].text == "Hello"
+    assert message.parts[1].type == ContentType.MULTI_PART_VARIABLE
+    assert message.parts[1].text == "image_var"
+
+
+def test_content_part_model():
+    # Test ContentPart model with text type
+    text_part = ContentPart(type=ContentType.TEXT, text="Hello world")
+    assert text_part.type == ContentType.TEXT
+    assert text_part.text == "Hello world"
+
+    # Test ContentPart model with multi-part variable type
+    multipart_part = ContentPart(type=ContentType.MULTI_PART_VARIABLE, text="variable_name")
+    assert multipart_part.type == ContentType.MULTI_PART_VARIABLE
+    assert multipart_part.text == "variable_name"
+
+    # Test ContentPart model with minimal fields
+    minimal_part = ContentPart(type=ContentType.TEXT)
+    assert minimal_part.type == ContentType.TEXT
+    assert minimal_part.text is None
+
+def test_variable_def_model_multi_part():
+    # Test VariableDef model with MULTI_PART type
+    var_def = VariableDef(key="image_parts", desc="Multi-part content", type=VariableType.MULTI_PART)
+    assert var_def.key == "image_parts"
+    assert var_def.desc == "Multi-part content"
+    assert var_def.type == VariableType.MULTI_PART
 
 def test_variable_def_model():
     # Test VariableDef model with required fields
