@@ -9,6 +9,8 @@ import threading
 import json
 import urllib.parse
 
+import pydantic
+
 from cozeloop import span
 from cozeloop.internal.trace.model.model import TagTruncateConf
 from cozeloop.spec.tracespec import (ModelInput, ModelOutput, ModelMessagePartType, ModelMessage, ModelMessagePart,
@@ -218,7 +220,11 @@ class Span(span.Span, SpanContext, ABC):
                     part.file_url.url = ""
 
         try:
-            m_content_json = m_content.model_dump_json()
+            m_content_json = ""
+            if pydantic.VERSION.startswith('1'):
+                m_content_json = m_content.json()
+            else:
+                m_content_json = m_content.model_dump_json()
             return len(m_content_json)
         except Exception as e:
             logger.error(f"Failed to get model input size, m_content model_dump_json err: {e}")

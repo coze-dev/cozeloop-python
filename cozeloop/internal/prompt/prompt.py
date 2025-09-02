@@ -3,6 +3,7 @@
 
 import json
 from typing import Dict, Any, List, Optional
+import pydantic
 
 from jinja2 import BaseLoader, Undefined
 from jinja2.sandbox import SandboxedEnvironment
@@ -52,9 +53,15 @@ class PromptProvider:
                 try:
                     prompt = self._get_prompt(prompt_key, version, label)
                     if prompt is not None:
+
+                        output = None
+                        if pydantic.VERSION.startswith('1'):
+                            output = prompt.json()
+                        else:
+                            output = prompt.model_dump_json(exclude_none=True)
                         prompt_hub_pan.set_tags({
                             PROMPT_VERSION: prompt.version,
-                            consts.OUTPUT: prompt.model_dump_json(exclude_none=True),
+                            consts.OUTPUT: output,
                         })
                     return prompt
                 except RemoteServiceError as e:
@@ -91,15 +98,25 @@ class PromptProvider:
             with self.trace_provider.start_span(consts.TRACE_PROMPT_TEMPLATE_SPAN_NAME,
                                                 consts.TRACE_PROMPT_TEMPLATE_SPAN_TYPE,
                                                 scene=V_SCENE_PROMPT_TEMPLATE) as prompt_template_span:
+                input = None
+                if pydantic.VERSION.startswith('1'):
+                    input = _to_span_prompt_input(prompt.prompt_template.messages, variables).json()
+                else:
+                    input = _to_span_prompt_input(prompt.prompt_template.messages, variables).model_dump_json(exclude_none=True)
                 prompt_template_span.set_tags({
                     PROMPT_KEY: prompt.prompt_key,
                     PROMPT_VERSION: prompt.version,
-                    consts.INPUT: _to_span_prompt_input(prompt.prompt_template.messages, variables).model_dump_json(exclude_none=True)
+                    consts.INPUT: input
                 })
                 try:
                     results = self._prompt_format(prompt, variables)
+                    output = None
+                    if pydantic.VERSION.startswith('1'):
+                        output = _to_span_prompt_output(results).json()
+                    else:
+                        output = _to_span_prompt_output(results).model_dump_json(exclude_none=True)
                     prompt_template_span.set_tags({
-                        consts.OUTPUT: _to_span_prompt_output(results).model_dump_json(exclude_none=True),
+                        consts.OUTPUT: output,
                     })
                     return results
                 except RemoteServiceError as e:

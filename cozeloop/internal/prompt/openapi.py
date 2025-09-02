@@ -4,6 +4,7 @@
 from enum import Enum
 from typing import List, Optional
 
+import pydantic
 from pydantic import BaseModel
 
 from cozeloop.internal.httpclient import Client, BaseResponse
@@ -165,6 +166,10 @@ class OpenAPIClient:
             return None
         request = MPullPromptRequest(workspace_id=workspace_id, queries=queries)
         response = self.http_client.post(MPULL_PROMPT_PATH, MPullPromptResponse, request)
-        real_resp = MPullPromptResponse.model_validate(response)
+        real_resp = None
+        if pydantic.VERSION.startswith('1'):
+            real_resp = MPullPromptResponse.parse_obj(response)
+        else:
+            real_resp = MPullPromptResponse.model_validate(response)
         if real_resp.data is not None:
             return real_resp.data.items

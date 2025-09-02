@@ -8,17 +8,17 @@ from typing import List, Optional, Literal
 from pydantic.dataclasses import dataclass
 
 
-class ObjectStorage(BaseModel):
-    input_tos_key: Optional[str] = None  # The key for reporting long input data
-    output_tos_key: Optional[str] = None  # The key for reporting long output data
-    attachments: List['Attachment'] = None  # attachments in input or output
-
-
 class Attachment(BaseModel):
     field: Optional[str] = None
     name: Optional[str] = None
     type: Optional[str] = None  # text, image, file
     tos_key: Optional[str] = None
+
+
+class ObjectStorage(BaseModel):
+    input_tos_key: Optional[str] = None  # The key for reporting long input data
+    output_tos_key: Optional[str] = None  # The key for reporting long output data
+    attachments: List['Attachment'] = None  # attachments in input or output
 
 
 class UploadType(str, Enum):

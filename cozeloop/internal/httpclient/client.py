@@ -6,6 +6,7 @@ import os
 from typing import Optional, Dict, Union, IO, Type, Tuple
 
 import httpx
+import pydantic
 from pydantic import BaseModel
 
 from cozeloop.internal import consts
@@ -71,7 +72,10 @@ class Client:
         _timeout = timeout if timeout is not None else self.timeout
 
         if isinstance(json, BaseModel):
-            json = json.model_dump(by_alias=True)
+            if pydantic.VERSION.startswith('1'):
+                json = json.dict(by_alias=True)
+            else:
+                json = json.model_dump(by_alias=True)
 
         try:
             response = self.http_client.request(

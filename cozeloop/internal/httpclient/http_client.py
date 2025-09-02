@@ -5,6 +5,7 @@ import logging
 from typing import Dict, Type, TypeVar
 
 import httpx
+import pydantic
 from pydantic import ValidationError
 
 from cozeloop.internal import consts
@@ -50,7 +51,14 @@ def parse_response(url: str, response: httpx.Response, response_model: Type[T]) 
         raise e
 
     try:
-        res = response_model.model_validate(data) if data is not None else response_model()
+        res = None
+        if data is not None:
+            if pydantic.VERSION.startswith('1'):
+                res = response_model.parse_obj(data)
+            else:
+                res = response_model.model_validate(data)
+        else:
+            res = response_model()
     except ValidationError as e:
         logger.error(f"Failed to parse response. Path: {url}, http code: {http_code}, log id: {log_id}, error: {e}.")
         raise consts.InternalError from e

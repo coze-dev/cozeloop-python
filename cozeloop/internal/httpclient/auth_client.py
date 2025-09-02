@@ -7,6 +7,7 @@ from typing import Optional, List, Type, Dict
 from urllib.parse import urlparse, quote_plus
 
 import httpx
+import pydantic
 from authlib.jose import jwt
 from pydantic import BaseModel
 
@@ -199,9 +200,15 @@ class JWTOAuthApp(OAuthApp):
         jwt_token = self._gen_jwt(self._public_key_id, self._private_key, 3600, session_name)
         url = f"{self._base_url}/api/permission/oauth2/token"
         headers = {"Authorization": f"Bearer {jwt_token}"}
+        scope_str = None
+        if scope:
+            if pydantic.VERSION.startswith('1'):
+                scope_str = scope.dict()
+            else:
+                scope_str = scope.model_dump()
         body = {
             "duration_seconds": ttl,
             "grant_type": "urn:ietf:params:oauth:grant-type:jwt-bearer",
-            "scope": scope.model_dump() if scope else None,
+            "scope": scope_str,
         }
         return self._do_request(url, "POST", OAuthToken, headers=headers, json=body)

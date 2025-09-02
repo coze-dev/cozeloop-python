@@ -6,6 +6,8 @@ import random
 import string
 from typing import Any, Dict, List, Optional, TypeVar, Sequence
 from functools import singledispatch
+
+import pydantic
 from pydantic import BaseModel
 
 T = TypeVar('T')
@@ -75,7 +77,10 @@ def to_json(param: Any) -> str:
         return param
     try:
         if isinstance(param, BaseModel):
-            return param.model_dump_json()
+            if pydantic.VERSION.startswith('1'):
+                return param.json()
+            else:
+                return param.model_dump_json()
         return json.dumps(param, ensure_ascii=False)
     except json.JSONDecodeError:
         return param.__str__()
