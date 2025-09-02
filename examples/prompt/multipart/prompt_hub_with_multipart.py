@@ -144,7 +144,7 @@ if __name__ == '__main__':
             # im1 is a multi-part variable, and the value is a list of ContentPart
             "im1": [
                 ContentPart(type=ContentType.TEXT, text="图片示例"),
-                ContentPart(type=ContentType.IMAGE_URL, image_url="https://dummyimage.com/600x400/4CAF50/fff&text="),
+                ContentPart(type=ContentType.IMAGE_URL, image_url="https://example.com"),
             ],
             # Other variables in the prompt template that are not provided with corresponding values will be
             # considered as empty values.
