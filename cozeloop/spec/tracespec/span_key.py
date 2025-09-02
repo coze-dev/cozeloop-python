@@ -19,6 +19,7 @@ ES_CLUSTER = "es_cluster"         # When using ES to provide retrieval capabilit
 PROMPT_PROVIDER = "prompt_provider" # Prompt providers, such as Loop, Langsmith, etc.
 PROMPT_KEY = "prompt_key"
 PROMPT_VERSION = "prompt_version"
+PROMPT_LABEL = "prompt_label"
 
 # Internal experimental field.
 # It is not recommended to use for the time being. Instead, use the corresponding Set method.

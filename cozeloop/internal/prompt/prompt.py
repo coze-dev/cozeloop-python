@@ -4,11 +4,10 @@
 import json
 from typing import Dict, Any, List, Optional
 
-from jinja2 import Environment, BaseLoader, Undefined
-from jinja2.utils import missing, object_type_repr
+from jinja2 import BaseLoader, Undefined
 from jinja2.sandbox import SandboxedEnvironment
+from jinja2.utils import missing, object_type_repr
 
-from cozeloop.spec.tracespec import PROMPT_KEY, INPUT, PROMPT_VERSION, V_SCENE_PROMPT_TEMPLATE, V_SCENE_PROMPT_HUB
 from cozeloop.entities.prompt import (Prompt, Message, VariableDef, VariableType, TemplateType, Role,
                                       PromptVariable, ContentPart, ContentType)
 from cozeloop.internal import consts
@@ -18,6 +17,7 @@ from cozeloop.internal.prompt.cache import PromptCache
 from cozeloop.internal.prompt.converter import _convert_prompt, _to_span_prompt_input, _to_span_prompt_output
 from cozeloop.internal.prompt.openapi import OpenAPIClient, PromptQuery
 from cozeloop.internal.trace.trace import TraceProvider
+from cozeloop.spec.tracespec import PROMPT_KEY, INPUT, PROMPT_VERSION, V_SCENE_PROMPT_TEMPLATE, V_SCENE_PROMPT_HUB, PROMPT_LABEL
 
 
 class PromptProvider:
@@ -39,7 +39,7 @@ class PromptProvider:
                                  auto_refresh=True)
         self.prompt_trace = prompt_trace
 
-    def get_prompt(self, prompt_key: str, version: str = '') -> Optional[Prompt]:
+    def get_prompt(self, prompt_key: str, version: str = '', label: str = '') -> Optional[Prompt]:
         # Trace reporting
         if self.prompt_trace and self.trace_provider is not None:
             with self.trace_provider.start_span(consts.TRACE_PROMPT_HUB_SPAN_NAME,
@@ -47,10 +47,10 @@ class PromptProvider:
                                                 scene=V_SCENE_PROMPT_HUB) as prompt_hub_pan:
                 prompt_hub_pan.set_tags({
                     PROMPT_KEY: prompt_key,
-                    INPUT: json.dumps({PROMPT_KEY: prompt_key, PROMPT_VERSION: version})
+                    INPUT: json.dumps({PROMPT_KEY: prompt_key, PROMPT_VERSION: version, PROMPT_LABEL: label})
                 })
                 try:
-                    prompt = self._get_prompt(prompt_key, version)
+                    prompt = self._get_prompt(prompt_key, version, label)
                     if prompt is not None:
                         prompt_hub_pan.set_tags({
                             PROMPT_VERSION: prompt.version,
@@ -65,20 +65,20 @@ class PromptProvider:
                     prompt_hub_pan.set_error(str(e))
                     raise e
         else:
-            return self._get_prompt(prompt_key, version)
+            return self._get_prompt(prompt_key, version, label)
 
-    def _get_prompt(self, prompt_key: str, version: str) -> Optional[Prompt]:
+    def _get_prompt(self, prompt_key: str, version: str, label: str = '') -> Optional[Prompt]:
         """
         Get Prompt, prioritize retrieving from cache, if not found then fetch from server
         """
         # Try to get from cache
-        prompt = self.cache.get(prompt_key, version)
+        prompt = self.cache.get(prompt_key, version, label)
         # If not in cache, fetch from server and cache it
         if prompt is None:
-            result = self.openapi_client.mpull_prompt(self.workspace_id, [PromptQuery(prompt_key=prompt_key, version=version)])
+            result = self.openapi_client.mpull_prompt(self.workspace_id, [PromptQuery(prompt_key=prompt_key, version=version, label=label)])
             if result:
                 prompt = _convert_prompt(result[0].prompt)
-                self.cache.set(prompt_key, version, prompt)
+                self.cache.set(prompt_key, version, label, prompt)
         # object cache item should be read only
         return prompt.copy(deep=True)
 
