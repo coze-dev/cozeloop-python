@@ -118,16 +118,14 @@ if __name__ == '__main__':
     client = cozeloop.new_client(
         # Set whether to report a trace span when get or format prompt.
         # Default value is false.
-        prompt_trace=True,
-        workspace_id="7496795200791511052",
-        api_token="pat_MncpzaGch5UIHuModf3mv7S6IpNkG8uer265shnDPML8MRiG0gJrYoT9izOAOhdd")
+        prompt_trace=True)
 
     # 3. new root span
     rootSpan = client.start_span("root_span", "main_span")
 
     # 4. Get the prompt
     # If no specific version is specified, the latest version of the corresponding prompt will be obtained
-    prompt = client.get_prompt(prompt_key="image1", version="0.0.4")
+    prompt = client.get_prompt(prompt_key="prompt_hub_demo", version="0.0.1")
     if prompt is not None:
         # Get messages of the prompt
         if prompt.prompt_template is not None:
@@ -147,9 +145,7 @@ if __name__ == '__main__':
             "im1": [
                 ContentPart(type=ContentType.TEXT, text="图片示例"),
                 ContentPart(type=ContentType.IMAGE_URL,
-                            image_url=ImageURL(url="https://dummyimage.com/600x400/4CAF50/fff&text=")),
-                ContentPart(type=ContentType.TEXT),
-                ContentPart(type=ContentType.IMAGE_URL),
+                            image_url=ImageURL(url="https://example.com"))
             ],
             # Other variables in the prompt template that are not provided with corresponding values will be
             # considered as empty values.
