@@ -3,7 +3,7 @@
 
 import logging
 import os
-from typing import Optional, Dict, Union, IO, Type, Tuple
+from typing import Optional, Dict, Union, IO, Type, Tuple, Any
 
 import httpx
 import pydantic
@@ -18,6 +18,7 @@ logger = logging.getLogger(__name__)
 
 FileContent = Union[IO[bytes], bytes]
 FileType = Tuple[str, FileContent]
+
 
 
 class Client:
@@ -122,3 +123,61 @@ class Client:
     ) -> T:
         _file = {"file": (file_name, file)}
         return self.request(path, "POST", response_model, form=form, files=_file, timeout=self.upload_timeout)
+
+    def post_stream(
+            self,
+            path: str,
+            json: Union[BaseModel, Dict] = None,
+            timeout: Optional[int] = None,
+    ):
+        """发起流式POST请求，返回stream_context"""
+        url = self._build_url(path)
+        headers = self._set_headers({"Content-Type": "application/json"})
+        
+        if isinstance(json, BaseModel):
+            json = json.model_dump(by_alias=True)
+        
+        _timeout = timeout if timeout is not None else self.timeout
+        
+        try:
+            # 返回stream_context，让StreamReader管理上下文
+            stream_context = self.http_client.stream(
+                "POST",
+                url,
+                json=json,
+                headers=headers,
+                timeout=_timeout
+            )
+            return stream_context
+        except httpx.HTTPError as e:
+            logger.error(f"Http client stream request failed, path: {path}, err: {e}.")
+            raise consts.NetworkError from e
+
+    async def apost_stream(
+            self,
+            path: str,
+            json: Union[BaseModel, Dict] = None,
+            timeout: Optional[int] = None,
+    ):
+        """发起异步流式POST请求，返回stream_context"""
+        url = self._build_url(path)
+        headers = self._set_headers({"Content-Type": "application/json"})
+        
+        if isinstance(json, BaseModel):
+            json = json.model_dump(by_alias=True)
+        
+        _timeout = timeout if timeout is not None else self.timeout
+        
+        try:
+            # 返回stream_context，让StreamReader管理上下文
+            stream_context = self.http_client.stream(
+                "POST",
+                url,
+                json=json,
+                headers=headers,
+                timeout=_timeout
+            )
+            return stream_context
+        except httpx.HTTPError as e:
+            logger.error(f"Http client async stream request failed, path: {path}, err: {e}.")
+            raise consts.NetworkError from e

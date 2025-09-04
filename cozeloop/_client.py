@@ -7,13 +7,14 @@ import logging
 import os
 import threading
 from datetime import datetime
-from typing import Dict, Any, List, Optional, Callable
+from typing import Dict, Any, List, Optional, Callable, Union
 
 import httpx
 
 from cozeloop.client import Client
 from cozeloop._noop import NOOP_SPAN, _NoopClient
-from cozeloop.entities.prompt import Prompt, Message, PromptVariable
+from cozeloop.entities.prompt import Prompt, Message, PromptVariable, ExecuteResult
+from cozeloop.entities.stream import StreamReader
 from cozeloop.internal import consts, httpclient
 from cozeloop.internal.consts import ClientClosedError
 from cozeloop.internal.httpclient import Auth
@@ -269,6 +270,62 @@ class _LoopClient(Client):
             raise ClientClosedError()
         return self._prompt_provider.prompt_format(prompt, variables)
 
+    def execute_prompt(
+        self,
+        prompt_key: str,
+        *,
+        version: Optional[str] = None,
+        label: Optional[str] = None,
+        variable_vals: Optional[Dict[str, Any]] = None,
+        messages: Optional[List[Message]] = None,
+        stream: bool = False,
+        timeout: Optional[int] = None
+    ) -> Union[ExecuteResult, StreamReader[ExecuteResult]]:
+        """
+        执行Prompt请求
+        
+        :param timeout: 请求超时时间（秒），可选，默认为600秒（10分钟）
+        """
+        if self._closed:
+            raise ClientClosedError()
+        return self._prompt_provider.execute_prompt(
+            prompt_key,
+            version=version,
+            label=label,
+            variable_vals=variable_vals,
+            messages=messages,
+            stream=stream,
+            timeout=timeout
+        )
+
+    async def aexecute_prompt(
+        self,
+        prompt_key: str,
+        *,
+        version: Optional[str] = None,
+        label: Optional[str] = None,
+        variable_vals: Optional[Dict[str, Any]] = None,
+        messages: Optional[List[Message]] = None,
+        stream: bool = False,
+        timeout: Optional[int] = None
+    ) -> Union[ExecuteResult, StreamReader[ExecuteResult]]:
+        """
+        异步执行Prompt请求
+        
+        :param timeout: 请求超时时间（秒），可选，默认为600秒（10分钟）
+        """
+        if self._closed:
+            raise ClientClosedError()
+        return await self._prompt_provider.aexecute_prompt(
+            prompt_key,
+            version=version,
+            label=label,
+            variable_vals=variable_vals,
+            messages=messages,
+            stream=stream,
+            timeout=timeout
+        )
+
     def start_span(
             self,
             name: str,
@@ -366,6 +423,58 @@ def get_prompt(prompt_key: str, version: str = '', label: str = '') -> Prompt:
 
 def prompt_format(prompt: Prompt, variables: Dict[str, Any]) -> List[Message]:
     return get_default_client().prompt_format(prompt, variables)
+
+
+def execute_prompt(
+    prompt_key: str,
+    *,
+    version: Optional[str] = None,
+    label: Optional[str] = None,
+    variable_vals: Optional[Dict[str, Any]] = None,
+    messages: Optional[List[Message]] = None,
+    stream: bool = False,
+    timeout: Optional[int] = None
+) -> Union[ExecuteResult, StreamReader[ExecuteResult]]:
+    """
+    执行Prompt请求
+    
+    :param timeout: 请求超时时间（秒），可选，默认为600秒（10分钟）
+    """
+    return get_default_client().execute_prompt(
+        prompt_key,
+        version=version,
+        label=label,
+        variable_vals=variable_vals,
+        messages=messages,
+        stream=stream,
+        timeout=timeout
+    )
+
+
+async def aexecute_prompt(
+    prompt_key: str,
+    *,
+    version: Optional[str] = None,
+    label: Optional[str] = None,
+    variable_vals: Optional[Dict[str, Any]] = None,
+    messages: Optional[List[Message]] = None,
+    stream: bool = False,
+    timeout: Optional[int] = None
+) -> Union[ExecuteResult, StreamReader[ExecuteResult]]:
+    """
+    异步执行Prompt请求
+    
+    :param timeout: 请求超时时间（秒），可选，默认为600秒（10分钟）
+    """
+    return await get_default_client().aexecute_prompt(
+        prompt_key,
+        version=version,
+        label=label,
+        variable_vals=variable_vals,
+        messages=messages,
+        stream=stream,
+        timeout=timeout
+    )
 
 
 def start_span(name: str, span_type: str, *, start_time: Optional[int] = None,
