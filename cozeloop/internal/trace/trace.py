@@ -159,6 +159,6 @@ def default_finish_event_processor(info: FinishEventInfo):
     if info is None:
         return
     if info.is_event_fail:
-        logger.error(f"[fornax_sdk] finish_event[{info.event_type}] fail, msg: {info.detail_msg}")
+        logger.error(f"finish_event[{info.event_type}] fail, msg: {info.detail_msg}")
     else:
-        logger.debug(f"[fornax_sdk] finish_event[{info.event_type}] success, item num: {info.item_num}, msg: {info.detail_msg}")
+        logger.debug(f"finish_event[{info.event_type}] success, item num: {info.item_num}, msg: {info.detail_msg}")
