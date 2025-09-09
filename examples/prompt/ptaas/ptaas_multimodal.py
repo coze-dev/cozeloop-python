@@ -55,10 +55,7 @@ def multimodal_example(client: Client) -> None:
     # User: 例如：{{example2}}
     # Assistant: {{city2}}
     
-    # Prepare Base64 image data (example)
-    # In actual use, you need to provide a real image path
-    image_path = "/Users/bytedance/Downloads/shanghai.jpeg"
-    base64_data = "data:image/jpeg;base64,/9j/4AAQSkZJRgABAQAAAQABAAD/2wBDAAYEBQYFBAYGBQYHBwYIChAKCgkJChQODwwQFxQYGBcUFhYaHSUfGhsjHBYWICwgIyYnKSopGR8tMC0oMCUoKSj/2wBDAQcHBwoIChMKChMoGhYaKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCgoKCj/wAARCAABAAEDASIAAhEBAxEB/8QAFQABAQAAAAAAAAAAAAAAAAAAAAv/xAAUEAEAAAAAAAAAAAAAAAAAAAAA/8QAFQEBAQAAAAAAAAAAAAAAAAAAAAX/xAAUEQEAAAAAAAAAAAAAAAAAAAAA/9oADAMBAAIRAxEAPwCdABmX/9k="
+    image_path = "your_image_path"
     # If image file exists, read and encode
     # 如果图片文件存在，读取并编码
     if os.path.exists(image_path):
