@@ -18,6 +18,8 @@ from ._client import (
     close,
     get_prompt,
     prompt_format,
+    execute_prompt,
+    aexecute_prompt,
     start_span,
     get_span_from_context,
     get_span_from_header,

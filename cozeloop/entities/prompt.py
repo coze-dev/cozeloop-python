@@ -3,8 +3,8 @@
 
 from enum import Enum
 from typing import List, Optional, Union
-
-from pydantic import BaseModel, Field, ConfigDict
+from typing import List, Optional, Union, Dict, Any
+from pydantic import BaseModel
 
 
 class TemplateType(str, Enum):
@@ -47,6 +47,7 @@ class ToolChoiceType(str, Enum):
 class ContentType(str, Enum):
     TEXT = "text"
     IMAGE_URL = "image_url"
+    BASE64_DATA = "base64_data"
     MULTI_PART_VARIABLE = "multi_part_variable"
 
 
@@ -54,12 +55,28 @@ class ContentPart(BaseModel):
     type: ContentType
     text: Optional[str] = None
     image_url: Optional[str] = None
+    base64_data: Optional[str] = None
+
+
+class FunctionCall(BaseModel):
+    name: str
+    arguments: Optional[str] = None
+
+
+class ToolCall(BaseModel):
+    index: int
+    id: str
+    type: ToolType
+    function_call: Optional[FunctionCall] = None
 
 
 class Message(BaseModel):
     role: Role
+    reasoning_content: Optional[str] = None
     content: Optional[str] = None
     parts: Optional[List[ContentPart]] = None
+    tool_call_id: Optional[str] = None
+    tool_calls: Optional[List[ToolCall]] = None
 
 
 class VariableDef(BaseModel):
@@ -107,6 +124,28 @@ class Prompt(BaseModel):
     tools: Optional[List[Tool]] = None
     tool_call_config: Optional[ToolCallConfig] = None
     llm_config: Optional[LLMConfig] = None
+
+
+class ExecuteParam(BaseModel):
+    """Execute参数"""
+    prompt_key: str
+    version: str = ""
+    label: str = ""
+    variable_vals: Optional[Dict[str, Any]] = None
+    messages: Optional[List[Message]] = None
+
+
+class TokenUsage(BaseModel):
+    """Token使用统计"""
+    input_tokens: int = 0
+    output_tokens: int = 0
+
+
+class ExecuteResult(BaseModel):
+    """Execute结果"""
+    message: Optional[Message] = None
+    finish_reason: Optional[str] = None
+    usage: Optional[TokenUsage] = None
 
 
 MessageLikeObject = Union[Message, List[Message]]

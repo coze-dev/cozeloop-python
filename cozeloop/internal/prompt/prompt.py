@@ -2,23 +2,27 @@
 # SPDX-License-Identifier: MIT
 
 import json
-from typing import Dict, Any, List, Optional
-import pydantic
+from typing import Dict, Any, List, Optional, Union
 
+import pydantic
 from jinja2 import BaseLoader, Undefined
 from jinja2.sandbox import SandboxedEnvironment
 from jinja2.utils import missing, object_type_repr
 
 from cozeloop.entities.prompt import (Prompt, Message, VariableDef, VariableType, TemplateType, Role,
-                                      PromptVariable, ContentPart, ContentType)
+                                      PromptVariable, ContentPart, ContentType, ExecuteResult)
+from cozeloop.entities.stream import StreamReader
 from cozeloop.internal import consts
 from cozeloop.internal.consts.error import RemoteServiceError
 from cozeloop.internal.httpclient.client import Client
 from cozeloop.internal.prompt.cache import PromptCache
-from cozeloop.internal.prompt.converter import _convert_prompt, _to_span_prompt_input, _to_span_prompt_output
-from cozeloop.internal.prompt.openapi import OpenAPIClient, PromptQuery
+from cozeloop.internal.prompt.converter import _convert_prompt, _to_span_prompt_input, _to_span_prompt_output, \
+    convert_execute_data_to_result, to_openapi_message
+from cozeloop.internal.prompt.execute_stream_reader import ExecuteStreamReader
+from cozeloop.internal.prompt.openapi import OpenAPIClient, PromptQuery, ExecuteRequest, VariableVal
 from cozeloop.internal.trace.trace import TraceProvider
-from cozeloop.spec.tracespec import PROMPT_KEY, INPUT, PROMPT_VERSION, V_SCENE_PROMPT_TEMPLATE, V_SCENE_PROMPT_HUB, PROMPT_LABEL
+from cozeloop.spec.tracespec import PROMPT_KEY, INPUT, PROMPT_VERSION, V_SCENE_PROMPT_TEMPLATE, V_SCENE_PROMPT_HUB, \
+    PROMPT_LABEL
 
 
 class PromptProvider:
@@ -82,7 +86,8 @@ class PromptProvider:
         prompt = self.cache.get(prompt_key, version, label)
         # If not in cache, fetch from server and cache it
         if prompt is None:
-            result = self.openapi_client.mpull_prompt(self.workspace_id, [PromptQuery(prompt_key=prompt_key, version=version, label=label)])
+            result = self.openapi_client.mpull_prompt(self.workspace_id, [
+                PromptQuery(prompt_key=prompt_key, version=version, label=label)])
             if result:
                 prompt = _convert_prompt(result[0].prompt)
                 self.cache.set(prompt_key, version, label, prompt)
@@ -169,7 +174,8 @@ class PromptProvider:
                 if not isinstance(val, str):
                     raise ValueError(f"type of variable '{var_def.key}' should be string")
             elif var_def.type == VariableType.PLACEHOLDER:
-                if not (isinstance(val, Message) or (isinstance(val, List) and all(isinstance(item, Message) for item in val))):
+                if not (isinstance(val, Message) or (
+                        isinstance(val, List) and all(isinstance(item, Message) for item in val))):
                     raise ValueError(f"type of variable '{var_def.key}' should be Message like object")
             elif var_def.type == VariableType.BOOLEAN:
                 if not isinstance(val, bool):
@@ -265,7 +271,7 @@ class PromptProvider:
                     vardef = def_map[multi_part_key]
                     value = val_map[multi_part_key]
                     if vardef is not None and value is not None and vardef.type == VariableType.MULTI_PART:
-                            formatted_parts.extend(value)
+                        formatted_parts.extend(value)
             else:
                 formatted_parts.append(part)
 
@@ -298,7 +304,6 @@ class PromptProvider:
 
         return expanded_messages
 
-
     def _render_text_content(
             self,
             template_type: TemplateType,
@@ -326,7 +331,6 @@ class PromptProvider:
         else:
             raise ValueError(f"text render unsupported template type: {template_type}")
 
-
     def _render_jinja2_template(self, template_str: str, variable_def_map: Dict[str, VariableDef],
                                 variables: Dict[str, Any]) -> str:
         """渲染 Jinja2 模板"""
@@ -334,6 +338,168 @@ class PromptProvider:
         template = env.from_string(template_str)
         render_vars = {k: variables[k] for k in variable_def_map.keys() if variables is not None and k in variables}
         return template.render(**render_vars)
+
+    def execute_prompt(
+            self,
+            prompt_key: str,
+            *,
+            version: Optional[str] = None,
+            label: Optional[str] = None,
+            variable_vals: Optional[Dict[str, Any]] = None,
+            messages: Optional[List[Message]] = None,
+            stream: bool = False,
+            timeout: Optional[int] = None
+    ) -> Union[ExecuteResult, StreamReader[ExecuteResult]]:
+        """
+        执行Prompt请求
+        
+        使用基于SSE解码器的PromptStreamReader提供更好的流式处理性能和错误处理能力
+        
+        Args:
+            prompt_key: Prompt标识符
+            version: Prompt版本，可选
+            label: Prompt标签，可选
+            variable_vals: 变量值字典，可选
+            messages: 消息列表，可选
+            stream: 是否使用流式处理
+            timeout: 请求超时时间（秒），可选，默认为600秒（10分钟）
+            
+        Returns:
+            Union[ExecuteResult, StreamReader[ExecuteResult]]: 
+                如果stream=False，返回ExecuteResult
+                如果stream=True，返回PromptStreamReader实例（支持上下文管理器）
+        """
+        # 设置默认超时时间为600秒（10分钟）
+        actual_timeout = timeout if timeout is not None else consts.DEFAULT_PROMPT_EXECUTE_TIMEOUT
+        
+        # 验证timeout参数
+        self._validate_timeout(actual_timeout)
+            
+        request = self._build_execute_request(
+            prompt_key=prompt_key,
+            version=version or "",
+            label=label or "",
+            variable_vals=variable_vals,
+            messages=messages
+        )
+
+        if stream:
+            stream_context = self.openapi_client.execute_streaming(request, timeout=actual_timeout)
+            reader = ExecuteStreamReader(stream_context)
+            return reader
+        else:
+            data = self.openapi_client.execute(request, timeout=actual_timeout)
+            return convert_execute_data_to_result(data)
+
+    async def aexecute_prompt(
+            self,
+            prompt_key: str,
+            *,
+            version: Optional[str] = None,
+            label: Optional[str] = None,
+            variable_vals: Optional[Dict[str, Any]] = None,
+            messages: Optional[List[Message]] = None,
+            stream: bool = False,
+            timeout: Optional[int] = None
+    ) -> Union[ExecuteResult, StreamReader[ExecuteResult]]:
+        """
+        异步执行Prompt请求
+        
+        使用基于SSE解码器的PromptStreamReader提供更好的流式处理性能和错误处理能力
+        
+        Args:
+            prompt_key: Prompt标识符
+            version: Prompt版本，可选
+            label: Prompt标签，可选
+            variable_vals: 变量值字典，可选
+            messages: 消息列表，可选
+            stream: 是否使用流式处理
+            timeout: 请求超时时间（秒），可选，默认为600秒（10分钟）
+            
+        Returns:
+            Union[ExecuteResult, StreamReader[ExecuteResult]]: 
+                如果stream=False，返回ExecuteResult
+                如果stream=True，返回PromptStreamReader实例（支持异步上下文管理器）
+        """
+        # 设置默认超时时间为600秒（10分钟）
+        actual_timeout = timeout if timeout is not None else consts.DEFAULT_PROMPT_EXECUTE_TIMEOUT
+        
+        # 验证timeout参数
+        self._validate_timeout(actual_timeout)
+            
+        request = self._build_execute_request(
+            prompt_key=prompt_key,
+            version=version or "",
+            label=label or "",
+            variable_vals=variable_vals,
+            messages=messages
+        )
+
+        if stream:
+            stream_context = await self.openapi_client.aexecute_streaming(request, timeout=actual_timeout)
+            reader = ExecuteStreamReader(stream_context)
+            return reader
+        else:
+            data = await self.openapi_client.aexecute(request, timeout=actual_timeout)
+            return convert_execute_data_to_result(data)
+
+    def _build_execute_request(
+            self,
+            prompt_key: str,
+            version: Optional[str] = None,
+            label: Optional[str] = None,
+            variable_vals: Optional[Dict[str, Any]] = None,
+            messages: Optional[List[Message]] = None
+    ) -> ExecuteRequest:
+        """构建执行请求"""
+        # 构建prompt_identifier
+        prompt_identifier = PromptQuery(
+            prompt_key=prompt_key,
+            version=version if version else None,
+            label=label if label else None
+        )
+
+        # 构建variable_vals
+        variable_vals_list = None
+        if variable_vals:
+            variable_vals_list = []
+            for key, value in variable_vals.items():
+                var_val = VariableVal(key=key)
+
+                if isinstance(value, str):
+                    var_val.value = value
+                elif isinstance(value, Message):
+                    var_val.placeholder_messages = [value]
+                elif isinstance(value, ContentPart):
+                    var_val.multi_part_values = [value]
+                elif isinstance(value, list):
+                    if all(isinstance(item, Message) for item in value):
+                        var_val.placeholder_messages = value
+                    elif all(isinstance(item, ContentPart) for item in value):
+                        var_val.multi_part_values = value
+                    else:
+                        # 对于其他类型的list，转换为JSON字符串
+                        var_val.value = json.dumps(value)
+                else:
+                    # 对于其他类型，转换为JSON字符串
+                    var_val.value = json.dumps(value)
+
+                variable_vals_list.append(var_val)
+
+        return ExecuteRequest(
+            workspace_id=self.workspace_id,
+            prompt_identifier=prompt_identifier,
+            variable_vals=variable_vals_list,
+            messages=[to_openapi_message(msg) for msg in messages] if messages else None,
+        )
+
+    def _validate_timeout(self, timeout: int) -> None:
+        """验证超时参数"""
+        if not isinstance(timeout, int):
+            raise ValueError("timeout must be an integer")
+        if timeout <= 0:
+            raise ValueError("timeout must be greater than 0")
+
 
 class CustomUndefined(Undefined):
     __slots__ = ()
@@ -352,4 +518,3 @@ class CustomUndefined(Undefined):
             )
 
         return f"{{{{{message}}}}}"
-

@@ -2,10 +2,11 @@
 # SPDX-License-Identifier: MIT
 
 import logging
-from typing import Dict, Optional, List
+from typing import Dict, Optional, List, Union, Any
 
 from cozeloop.client import Client
-from cozeloop.entities.prompt import Prompt, Message, PromptVariable
+from cozeloop.entities.prompt import Prompt, Message, PromptVariable, ExecuteResult
+from cozeloop.entities.stream import StreamReader
 from cozeloop.internal.trace.noop_span import NoopSpan
 from cozeloop.span import SpanContext, Span
 
@@ -32,6 +33,32 @@ class _NoopClient(Client):
         raise self.new_exception
 
     def prompt_format(self, prompt: Prompt, variables: Dict[str, PromptVariable]) -> List[Message]:
+        logger.warning(f"Noop client not supported. {self.new_exception}")
+        raise self.new_exception
+
+    def execute_prompt(
+        self,
+        prompt_key: str,
+        *,
+        version: Optional[str] = None,
+        label: Optional[str] = None,
+        variable_vals: Optional[Dict[str, Any]] = None,
+        messages: Optional[List[Message]] = None,
+        stream: bool = False
+    ) -> Union[ExecuteResult, StreamReader[ExecuteResult]]:
+        logger.warning(f"Noop client not supported. {self.new_exception}")
+        raise self.new_exception
+
+    async def aexecute_prompt(
+        self,
+        prompt_key: str,
+        *,
+        version: Optional[str] = None,
+        label: Optional[str] = None,
+        variable_vals: Optional[Dict[str, Any]] = None,
+        messages: Optional[List[Message]] = None,
+        stream: bool = False
+    ) -> Union[ExecuteResult, StreamReader[ExecuteResult]]:
         logger.warning(f"Noop client not supported. {self.new_exception}")
         raise self.new_exception
 
