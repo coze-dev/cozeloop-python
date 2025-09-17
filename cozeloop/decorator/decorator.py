@@ -1,5 +1,6 @@
 # Copyright (c) 2025 Bytedance Ltd. and/or its affiliates
 # SPDX-License-Identifier: MIT
+import time
 from typing import Optional, Callable, Any, overload, Dict, Generic, Iterator, TypeVar, List, cast, AsyncIterator
 from functools import wraps
 
@@ -82,7 +83,7 @@ class CozeLoopDecorator:
                     output = res
                     if process_outputs:
                         output = process_outputs(output)
-
+                        inject_inner_token(span, output)
                     span.set_output(output)
                 except StopIteration:
                     pass
@@ -116,6 +117,7 @@ class CozeLoopDecorator:
                     output = res
                     if process_outputs:
                         output = process_outputs(output)
+                        inject_inner_token(span, output)
                     span.set_output(output)
                 except StopIteration:
                     pass
@@ -227,7 +229,7 @@ class CozeLoopDecorator:
                     res = func(*args, **kwargs)
                     output = res
                     if hasattr(output, "__iter__"):
-                        return _CozeLoopTraceStream(output, span, process_iterator_outputs)
+                        return _CozeLoopTraceStream(output, span, process_iterator_outputs, span_type)
                     if process_outputs:
                         output = process_outputs(output)
 
@@ -262,7 +264,7 @@ class CozeLoopDecorator:
                     res = await func(*args, **kwargs)
                     output = res
                     if hasattr(output, "__aiter__"):
-                        return _CozeLoopAsyncTraceStream(output, span, process_iterator_outputs)
+                        return _CozeLoopAsyncTraceStream(output, span, process_iterator_outputs, span_type)
                     if process_outputs:
                         output = process_outputs(output)
                     span.set_output(output)
@@ -288,7 +290,6 @@ class CozeLoopDecorator:
 
                     if not hasattr(res, "__aiter__") and res:
                         return res
-
 
             if is_async_gen_func(func):
                 return async_gen_wrapper
@@ -317,11 +318,14 @@ class _CozeLoopTraceStream(Generic[S]):
             stream: Iterator[S],
             span: Span,
             process_iterator_outputs: Optional[Callable[[Any], Any]] = None,
+            span_type: str = "",
     ):
         self.__stream__ = stream
         self.__span = span
         self.__output__: list[S] = []
         self.__process_iterator_outputs = process_iterator_outputs
+        self.__is_set_start_time_first_token: bool = False
+        self.__span_type = span_type
 
     def __next__(self) -> S:
         try:
@@ -360,6 +364,9 @@ class _CozeLoopTraceStream(Generic[S]):
             while True:
                 s = next(temp_stream)
                 self.__output__.append(s)
+                if not self.__is_set_start_time_first_token and self.__span_type == "model":
+                    self.__span.set_start_time_first_resp(time.time_ns() // 1_000)
+                    self.__is_set_start_time_first_token = True
                 yield s
         except StopIteration as e:
             return e
@@ -367,6 +374,7 @@ class _CozeLoopTraceStream(Generic[S]):
     def __end__(self, err: Exception = None):
         if self.__process_iterator_outputs:
             self.__output__ = self.__process_iterator_outputs(self.__output__)
+            inject_inner_token(self.__span, self.__output__)
         self.__span.set_output(self.__output__)
         if err:
             self.__span.set_error(err)
@@ -379,17 +387,21 @@ class _CozeLoopAsyncTraceStream(Generic[S]):
             stream: AsyncIterator[S],
             span: Span,
             process_iterator_outputs: Optional[Callable[[Any], Any]] = None,
+            span_type: str = "",
     ):
         self.__stream__ = stream
         self.__span = span
         self.__output__: list[S] = []
         self.__process_iterator_outputs = process_iterator_outputs
+        self.__is_set_start_time_first_token: bool = False
+        self.__span_type = span_type
 
     async def _aend(self, error: Optional[Exception] = None):
         if error:
             self.__span.set_error(error)
         if self.__process_iterator_outputs:
             self.__output__ = self.__process_iterator_outputs(self.__output__)
+            inject_inner_token(self.__span, self.__output__)
         self.__span.set_output(self.__output__)
         self.__span.finish()
 
@@ -433,6 +445,17 @@ class _CozeLoopAsyncTraceStream(Generic[S]):
             while True:
                 s = await temp_stream.__anext__()
                 self.__output__.append(s)
+                if not self.__is_set_start_time_first_token and self.__span_type == "model":
+                    self.__span.set_start_time_first_resp(time.time_ns() // 1_000)
+                    self.__is_set_start_time_first_token = True
                 yield s
         except StopIteration:
             pass
+
+
+def inject_inner_token(span: Span, src):
+    if isinstance(src, dict) and src.get("_inner_tokens_dict"):
+        if input_tokens := src.get("_inner_tokens_dict").get("input_tokens", 0):
+            span.set_input_tokens(input_tokens)
+        if output_tokens := src.get("_inner_tokens_dict").get("output_tokens", 0):
+            span.set_output_tokens(output_tokens)

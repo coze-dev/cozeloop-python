@@ -1,3 +1,6 @@
+## [0.1.14] - 2025-09-11
+### Added
+- trace support openai wrapper
 
 ## [0.1.13] - 2025-09-10
 ### Added
