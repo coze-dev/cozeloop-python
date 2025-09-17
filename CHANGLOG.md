@@ -1,3 +1,7 @@
+## [0.1.15] - 2025-09-17
+### Added
+- modify cachetools version to >=5.5.2,<7.0.0
+
 ## [0.1.14] - 2025-09-11
 ### Added
 - trace support openai wrapper
