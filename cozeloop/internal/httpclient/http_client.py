@@ -2,10 +2,12 @@
 # SPDX-License-Identifier: MIT
 
 import logging
-from typing import Dict, Type, TypeVar
+import typing
+from typing import Dict, Type, TypeVar, Any, Generator
 
 import httpx
 import pydantic
+from httpx import URL, Response
 from pydantic import ValidationError
 
 from cozeloop.internal import consts
@@ -16,9 +18,16 @@ logger = logging.getLogger(__name__)
 T = TypeVar('T', bound=BaseResponse)
 
 
-class HTTPClient(httpx.Client):
+class HTTPClient:
     def __init__(self):
-        super().__init__()
+        self.sync_client = httpx.Client()
+        self.async_client = httpx.AsyncClient()
+
+    def request(self, method: str, url: URL | str, **kwargs: Any) -> Response:
+        return self.sync_client.request(method, url, **kwargs)
+
+    def stream(self, method: str, url: URL | str, **kwargs: Any) -> typing.Iterator[Response]:
+        yield self.sync_client.stream(method, url, **kwargs)
 
 
 def _check_oauth_error(body: Dict, http_code: int, log_id: str) -> None:
