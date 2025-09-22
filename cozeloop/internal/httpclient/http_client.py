@@ -29,6 +29,13 @@ class HTTPClient:
     def stream(self, method: str, url: URL | str, **kwargs: Any) -> typing.Iterator[Response]:
         yield self.sync_client.stream(method, url, **kwargs)
 
+    async def arequest(self, method: str, url: URL | str, **kwargs: Any) -> Response:
+        return await self.async_client.request(method, url, **kwargs)
+
+    def astream(self, method: str, url: URL | str, **kwargs: Any):
+        """返回异步流上下文管理器"""
+        return self.async_client.stream(method, url, **kwargs)
+
 
 def _check_oauth_error(body: Dict, http_code: int, log_id: str) -> None:
     if http_code != 200 and "error_code" in body and "error_message" in body and "error" in body:
