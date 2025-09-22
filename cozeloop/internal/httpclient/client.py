@@ -29,29 +29,29 @@ class Client:
             auth: Auth,
             timeout: int = consts.DEFAULT_TIMEOUT,
             upload_timeout: int = consts.DEFAULT_UPLOAD_TIMEOUT,
-            header_injector: Optional[Callable[[], Dict[str, str]]] = None,
     ):
         self.api_base_url = api_base_url
         self.http_client = http_client
         self.auth = auth
         self.timeout = timeout
         self.upload_timeout = upload_timeout
-        self.header_injector = header_injector
 
     def _build_url(self, path: str) -> str:
         return f"{self.api_base_url}{path}"
     def _set_headers(self, headers: Optional[Dict[str, str]] = None) -> Dict[str, str]:
         res = user_agent_header()
         
-        # 注入header
-        if self.header_injector:
-            try:
-                injected_headers = self.header_injector()
+        # 固定注入span header
+        try:
+            from cozeloop._client import get_span_from_context
+            span = get_span_from_context()
+            if span and hasattr(span, 'to_header'):
+                injected_headers = span.to_header()
                 if injected_headers:
                     res.update(injected_headers)
-            except Exception as e:
-                # 静默处理异常，不影响正常请求
-                logger.debug(f"Header injection failed: {e}")
+        except Exception as e:
+            # 静默处理异常，不影响正常请求
+            logger.debug(f"Header injection failed: {e}")
         
         if headers:
             res.update(headers)
@@ -64,7 +64,6 @@ class Client:
         if ppe_env:
             res["x-use-ppe"] = "1"
 
-        return res
         return res
 
     def request(

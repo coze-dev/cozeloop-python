@@ -74,7 +74,6 @@ def new_client(
         tag_truncate_conf: Optional[TagTruncateConf] = None,
         api_base_path: Optional[APIBasePath] = None,
         trace_queue_conf: Optional[QueueConf] = None,
-        header_injector: Optional[Callable[[], Dict[str, str]]] = None,
 ) -> Client:
     cache_key = _generate_cache_key(  # all args are used to generate cache key
         api_base_url,
@@ -94,7 +93,6 @@ def new_client(
         tag_truncate_conf,
         api_base_path,
         trace_queue_conf,
-        header_injector,
     )
 
     with _cache_lock:
@@ -120,7 +118,6 @@ def new_client(
             tag_truncate_conf=tag_truncate_conf,
             api_base_path=api_base_path,
             trace_queue_conf=trace_queue_conf,
-            header_injector=header_injector,
         )
         _client_cache[cache_key] = client
         return client
@@ -152,7 +149,6 @@ class _LoopClient(Client):
             tag_truncate_conf: Optional[TagTruncateConf] = None,
             api_base_path: Optional[APIBasePath] = None,
             trace_queue_conf: Optional[QueueConf] = None,
-            header_injector: Optional[Callable[[], Dict[str, str]]] = None,
     ):
         workspace_id = self._get_from_env(workspace_id, ENV_WORKSPACE_ID)
         api_base_url = self._get_from_env(api_base_url, ENV_API_BASE_URL)
@@ -186,26 +182,12 @@ class _LoopClient(Client):
             jwt_oauth_public_key_id=jwt_oauth_public_key_id
         )
         
-        # 创建默认header注入函数
-        if header_injector is None:
-            def default_header_injector() -> Dict[str, str]:
-                try:
-                    span = self.get_span_from_context()
-                    if span and hasattr(span, 'to_header'):
-                        return span.to_header()
-                except Exception:
-                    # 静默处理异常，不影响正常请求
-                    pass
-                return {}
-            header_injector = default_header_injector
-        
         http_client = httpclient.Client(
             api_base_url=api_base_url,
             http_client=inner_client,
             auth=auth,
             timeout=timeout,
             upload_timeout=upload_timeout,
-            header_injector=header_injector
         )
         finish_pro = default_finish_event_processor
         if trace_finish_event_processor:
