@@ -26,8 +26,9 @@ class HTTPClient:
     def request(self, method: str, url: URL | str, **kwargs: Any) -> Response:
         return self.sync_client.request(method, url, **kwargs)
 
-    def stream(self, method: str, url: URL | str, **kwargs: Any) -> typing.Iterator[Response]:
-        yield self.sync_client.stream(method, url, **kwargs)
+    def stream(self, method: str, url: URL | str, **kwargs: Any):
+        """返回同步流上下文管理器"""
+        return self.sync_client.stream(method, url, **kwargs)
 
     async def arequest(self, method: str, url: URL | str, **kwargs: Any) -> Response:
         return await self.async_client.request(method, url, **kwargs)

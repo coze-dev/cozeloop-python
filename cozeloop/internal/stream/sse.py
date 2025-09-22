@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Iterator, Optional
+from typing import Any, Iterator, Optional, AsyncIterator
 
 
 class ServerSentEvent:
@@ -121,6 +121,44 @@ class SSEDecoder:
         """
         data = b""
         for chunk in iterator:
+            for line in chunk.splitlines(keepends=True):
+                data += line
+                if data.endswith((b"\r\r", b"\n\n", b"\r\n\r\n")):
+                    yield data
+                    data = b""
+        if data:
+            yield data
+
+    async def aiter_bytes(self, iterator: AsyncIterator[bytes]) -> AsyncIterator[ServerSentEvent]:
+        """
+        异步解码字节流为SSE事件
+        
+        Args:
+            iterator: 异步字节流迭代器
+            
+        Yields:
+            ServerSentEvent: 解码后的SSE事件
+        """
+        async for chunk in self._aiter_chunks(iterator):
+            # 先分割再解码，确保splitlines()只使用\r和\n
+            for raw_line in chunk.splitlines():
+                line = raw_line.decode("utf-8")
+                sse = self.decode(line)
+                if sse:
+                    yield sse
+
+    async def _aiter_chunks(self, iterator: AsyncIterator[bytes]) -> AsyncIterator[bytes]:
+        """
+        异步处理字节块，确保完整的SSE消息
+        
+        Args:
+            iterator: 异步字节流迭代器
+            
+        Yields:
+            bytes: 完整的SSE消息块
+        """
+        data = b""
+        async for chunk in iterator:
             for line in chunk.splitlines(keepends=True):
                 data += line
                 if data.endswith((b"\r\r", b"\n\n", b"\r\n\r\n")):

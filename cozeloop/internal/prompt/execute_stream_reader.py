@@ -128,7 +128,7 @@ class ExecuteStreamReader(BaseStreamReader[ExecuteResult]):
     async def __aenter__(self):
         """异步上下文管理器入口"""
         if not self._context_entered:
-            self._response = self._stream_context.__enter__()            # 检查HTTP状态码（同步版本逻辑）
+            self._response = await self._stream_context.__aenter__()            # 检查HTTP状态码（异步版本逻辑）
             if self._response.status_code != 200:
                 try:
                     # 先读取完整响应内容
@@ -139,10 +139,10 @@ class ExecuteStreamReader(BaseStreamReader[ExecuteResult]):
                     log_id = self._response.headers.get("x-tt-logid", "")
                     error_code = error_data.get('code', 0)
                     error_msg = error_data.get('msg', 'Unknown error')
-                    self._stream_context.__exit__(None, None, None)
+                    await self._stream_context.__aexit__(None, None, None)
                     raise RemoteServiceError(self._response.status_code, error_code, error_msg, log_id)
                 except Exception as e:
-                    self._stream_context.__exit__(None, None, None)
+                    await self._stream_context.__aexit__(None, None, None)
                     if isinstance(e, RemoteServiceError):
                         raise
                     from cozeloop.internal.consts.error import InternalError
@@ -158,7 +158,7 @@ class ExecuteStreamReader(BaseStreamReader[ExecuteResult]):
         """异步上下文管理器出口"""
         await self.aclose()
         if self._context_entered:
-            return self._stream_context.__exit__(exc_type, exc_val, exc_tb)
+            return await self._stream_context.__aexit__(exc_type, exc_val, exc_tb)
     
     def __iter__(self):
         """支持for循环直接读取"""
@@ -206,9 +206,9 @@ class ExecuteStreamReader(BaseStreamReader[ExecuteResult]):
         self._closed = True
         # 如果还没有进入上下文，直接关闭stream_context
         if not self._context_entered:
-            if hasattr(self._stream_context, '__exit__'):
+            if hasattr(self._stream_context, '__aexit__'):
                 try:
-                    self._stream_context.__exit__(None, None, None)
+                    await self._stream_context.__aexit__(None, None, None)
                 except Exception:
                     pass
             return
@@ -218,8 +218,8 @@ class ExecuteStreamReader(BaseStreamReader[ExecuteResult]):
             await super().aclose()
         else:
             # 如果response属性不存在，只关闭stream_context
-            if hasattr(self._stream_context, '__exit__'):
+            if hasattr(self._stream_context, '__aexit__'):
                 try:
-                    self._stream_context.__exit__(None, None, None)
+                    await self._stream_context.__aexit__(None, None, None)
                 except Exception:
                     pass

@@ -78,9 +78,8 @@ class BaseStreamReader(StreamReader[T], ABC, Generic[T]):
             ServerSentEvent: 解码后的SSE事件
         """
         try:
-            # 由于httpx.stream()返回的是同步流，即使在异步上下文中也需要使用同步迭代
-            # 将同步迭代包装成异步生成器
-            for sse in self._decoder.iter_bytes(self.response.iter_bytes()):
+            # 使用异步迭代器
+            async for sse in self._decoder.aiter_bytes(self.response.aiter_bytes()):
                 yield sse
         except Exception as e:
             logger.error(f"Error async iterating SSE events: {e}")
