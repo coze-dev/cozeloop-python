@@ -259,7 +259,7 @@ class OpenAPIClient:
 
     async def aexecute(self, request: ExecuteRequest, timeout: Optional[int] = None) -> ExecuteData:
         """异步执行Prompt请求"""
-        response = self.http_client.request(
+        response = await self.http_client.arequest(
             EXECUTE_PROMPT_PATH, 
             "POST", 
             ExecuteResponse, 

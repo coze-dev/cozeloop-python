@@ -153,6 +153,47 @@ class Client:
             logger.error(f"Http client stream request failed, path: {path}, err: {e}.")
             raise consts.NetworkError from e
 
+    async def arequest(
+            self,
+            path: str,
+            method: str,
+            response_model: Type[T],
+            *,
+            params: Optional[Dict[str, str]] = None,
+            form: Optional[Dict[str, str]] = None,
+            json: Optional[Union[BaseModel, Dict]] = None,
+            files: Optional[Dict[str, FileType]] = None,
+            headers: Optional[Dict[str, str]] = None,
+            timeout: Optional[int] = None,
+    ) -> T:
+        url = self._build_url(path)
+        _headers = self._set_headers(headers)
+
+        _timeout = timeout if timeout is not None else self.timeout
+
+        if isinstance(json, BaseModel):
+            if pydantic.VERSION.startswith('1'):
+                json = json.dict(by_alias=True)
+            else:
+                json = json.model_dump(by_alias=True)
+
+        try:
+            response = await self.http_client.arequest(
+                method,
+                url,
+                params=params,
+                data=form,
+                json=json,
+                files=files,
+                headers=_headers,
+                timeout=_timeout
+            )
+        except httpx.HTTPError as e:
+            logger.error(f"Http client request failed, path: {path}, err: {e}.")
+            raise consts.NetworkError from e
+
+        return parse_response(url, response, response_model)
+
     async def apost_stream(
             self,
             path: str,
@@ -170,7 +211,7 @@ class Client:
         
         try:
             # 返回stream_context，让StreamReader管理上下文
-            stream_context = self.http_client.stream(
+            stream_context = self.http_client.astream(
                 "POST",
                 url,
                 json=json,
