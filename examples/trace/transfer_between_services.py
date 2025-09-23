@@ -103,7 +103,7 @@ if __name__ == "__main__":
     root_span.set_user_id_baggage("123456")
 
     # assuming call llm
-    err = llm_runner.llm_call("你叫什么名字")
+    err = llm_runner.llm_call("What's your name?")
     if err is not None:
         # set tag key: `_status_code`
         root_span.set_status_code(ERR_CODE_LLM_CALL)

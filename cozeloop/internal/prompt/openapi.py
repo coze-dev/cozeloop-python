@@ -241,7 +241,7 @@ class OpenAPIClient:
             return real_resp.data.items
 
     def execute(self, request: ExecuteRequest, timeout: Optional[int] = None) -> ExecuteData:
-        """执行Prompt请求"""
+        """Execute Prompt request"""
         response = self.http_client.request(
             EXECUTE_PROMPT_PATH, 
             "POST", 
@@ -254,12 +254,12 @@ class OpenAPIClient:
         return response.data
 
     def execute_streaming(self, request: ExecuteRequest, timeout: Optional[int] = None):
-        """流式执行Prompt请求"""
+        """Execute Prompt request in streaming mode"""
         return self.http_client.post_stream(EXECUTE_STREAMING_PROMPT_PATH, request, timeout=timeout)
 
     async def aexecute(self, request: ExecuteRequest, timeout: Optional[int] = None) -> ExecuteData:
-        """异步执行Prompt请求"""
-        response = self.http_client.request(
+        """Asynchronously execute Prompt request"""
+        response = await self.http_client.arequest(
             EXECUTE_PROMPT_PATH, 
             "POST", 
             ExecuteResponse, 
@@ -271,5 +271,5 @@ class OpenAPIClient:
         return response.data
 
     async def aexecute_streaming(self, request: ExecuteRequest, timeout: Optional[int] = None):
-        """异步流式执行Prompt请求"""
+        """Asynchronously execute Prompt request in streaming mode"""
         return await self.http_client.apost_stream(EXECUTE_STREAMING_PROMPT_PATH, request, timeout=timeout)

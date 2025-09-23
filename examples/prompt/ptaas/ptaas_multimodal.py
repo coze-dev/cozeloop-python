@@ -50,14 +50,14 @@ def multimodal_example(client: Client) -> None:
     # Create a Prompt on the platform's Prompt development page (set Prompt Key to 'ptaas_demo'),
     # add the following messages to the template, submit a version. example1 and example2 are the multi modal variables.
     # System: You can quickly identify the location where a photo was taken.
-    # User: 例如：{{example1}}
+    # User: For example: {{example1}}
     # Assistant: {{city1}}
-    # User: 例如：{{example2}}
+    # User: For example: {{example2}}
     # Assistant: {{city2}}
     
     image_path = "your_image_path"
     # If image file exists, read and encode
-    # 如果图片文件存在，读取并编码
+    # If the image file exists, read and encode it
     if os.path.exists(image_path):
         try:
             with open(image_path, "rb") as f:

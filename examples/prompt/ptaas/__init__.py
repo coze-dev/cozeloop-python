@@ -2,11 +2,11 @@
 # SPDX-License-Identifier: MIT
 
 """
-PTaaS (Prompt Template as a Service) 示例
+PTaaS (Prompt Template as a Service) Examples
 
-本包包含了PTaaS功能的各种使用示例，包括：
-- 基础示例：同步非流式、异步非流式、异步流式调用
-- 高级示例：占位符变量、标签使用、Jinja2模板、超时控制、多模态处理
+This package contains various usage examples of PTaaS functionality, including:
+- Basic examples: synchronous non-streaming, asynchronous non-streaming, asynchronous streaming calls
+- Advanced examples: placeholder variables, label usage, Jinja2 templates, timeout control, multimodal processing
 """
 
 __all__ = [

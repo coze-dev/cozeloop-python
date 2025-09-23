@@ -143,7 +143,7 @@ if __name__ == '__main__':
             "count": 10,
             # im1 is a multi-part variable, and the value is a list of ContentPart
             "im1": [
-                ContentPart(type=ContentType.TEXT, text="图片示例"),
+                ContentPart(type=ContentType.TEXT, text="Image example"),
                 ContentPart(type=ContentType.IMAGE_URL, image_url="https://example.com"),
             ],
             # Other variables in the prompt template that are not provided with corresponding values will be

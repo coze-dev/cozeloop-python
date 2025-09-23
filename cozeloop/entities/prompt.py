@@ -127,7 +127,7 @@ class Prompt(BaseModel):
 
 
 class ExecuteParam(BaseModel):
-    """Execute参数"""
+    """Execute parameters"""
     prompt_key: str
     version: str = ""
     label: str = ""
@@ -136,13 +136,13 @@ class ExecuteParam(BaseModel):
 
 
 class TokenUsage(BaseModel):
-    """Token使用统计"""
+    """Token usage statistics"""
     input_tokens: int = 0
     output_tokens: int = 0
 
 
 class ExecuteResult(BaseModel):
-    """Execute结果"""
+    """Execute result"""
     message: Optional[Message] = None
     finish_reason: Optional[str] = None
     usage: Optional[TokenUsage] = None
