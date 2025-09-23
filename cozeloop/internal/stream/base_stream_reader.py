@@ -12,10 +12,12 @@ import httpx
 
 from cozeloop.entities.stream import StreamReader
 from cozeloop.internal.stream.sse import SSEDecoder, ServerSentEvent
-from cozeloop.internal.consts.error import RemoteServiceError, InternalError                # Check for errors
-                self._handle_sse_error(sse)
-                
-                # Parse data
+from cozeloop.internal.consts.error import RemoteServiceError, InternalError
+
+T = TypeVar('T')
+
+logger = logging.getLogger(__name__)
+
 
 class BaseStreamReader(StreamReader[T], ABC, Generic[T]):
     """
