@@ -333,7 +333,7 @@ class PromptProvider:
 
     def _render_jinja2_template(self, template_str: str, variable_def_map: Dict[str, VariableDef],
                                 variables: Dict[str, Any]) -> str:
-        """渲染 Jinja2 模板"""
+        """Render Jinja2 template"""
         env = SandboxedEnvironment()
         template = env.from_string(template_str)
         render_vars = {k: variables[k] for k in variable_def_map.keys() if variables is not None and k in variables}
@@ -351,28 +351,29 @@ class PromptProvider:
             timeout: Optional[int] = None
     ) -> Union[ExecuteResult, StreamReader[ExecuteResult]]:
         """
-        执行Prompt请求
+        Execute Prompt request
         
-        使用基于SSE解码器的PromptStreamReader提供更好的流式处理性能和错误处理能力
+        Uses SSE decoder-based PromptStreamReader to provide better streaming performance and error handling capabilities
         
         Args:
-            prompt_key: Prompt标识符
-            version: Prompt版本，可选
-            label: Prompt标签，可选
-            variable_vals: 变量值字典，可选
-            messages: 消息列表，可选
-            stream: 是否使用流式处理
-            timeout: 请求超时时间（秒），可选，默认为600秒（10分钟）
+            prompt_key: Prompt identifier
+            version: Prompt version, optional
+            label: Prompt label, optional
+            variable_vals: Variable values dictionary, optional
+            messages: Message list, optional
+            stream: Whether to use streaming processing
+            timeout: Request timeout (seconds), optional, default is 600 seconds (10 minutes)
             
         Returns:
             Union[ExecuteResult, StreamReader[ExecuteResult]]: 
-                如果stream=False，返回ExecuteResult
-                如果stream=True，返回PromptStreamReader实例（支持上下文管理器）
+                If stream=False, returns ExecuteResult
+                If stream=True, returns PromptStreamReader instance (supports context manager)
         """
-        # 设置默认超时时间为600秒（10分钟）
+        # Set default timeout to 600 seconds (10 minutes)
+        actual_timeout = timeout if timeout is not None else consts.DEFAULT_PROMPT_EXECUTE_TIMEOUT
         actual_timeout = timeout if timeout is not None else consts.DEFAULT_PROMPT_EXECUTE_TIMEOUT
         
-        # 验证timeout参数
+        # Validate timeout parameter
         self._validate_timeout(actual_timeout)
             
         request = self._build_execute_request(
@@ -403,28 +404,28 @@ class PromptProvider:
             timeout: Optional[int] = None
     ) -> Union[ExecuteResult, StreamReader[ExecuteResult]]:
         """
-        异步执行Prompt请求
+        Asynchronously execute Prompt request
         
-        使用基于SSE解码器的PromptStreamReader提供更好的流式处理性能和错误处理能力
+        Uses SSE decoder-based PromptStreamReader to provide better streaming performance and error handling capabilities
         
         Args:
-            prompt_key: Prompt标识符
-            version: Prompt版本，可选
-            label: Prompt标签，可选
-            variable_vals: 变量值字典，可选
-            messages: 消息列表，可选
-            stream: 是否使用流式处理
-            timeout: 请求超时时间（秒），可选，默认为600秒（10分钟）
+            prompt_key: Prompt identifier
+            version: Prompt version, optional
+            label: Prompt label, optional
+            variable_vals: Variable values dictionary, optional
+            messages: Message list, optional
+            stream: Whether to use streaming processing
+            timeout: Request timeout (seconds), optional, default is 600 seconds (10 minutes)
             
         Returns:
             Union[ExecuteResult, StreamReader[ExecuteResult]]: 
-                如果stream=False，返回ExecuteResult
-                如果stream=True，返回PromptStreamReader实例（支持异步上下文管理器）
+                If stream=False, returns ExecuteResult
+                If stream=True, returns PromptStreamReader instance (supports async context manager)
         """
-        # 设置默认超时时间为600秒（10分钟）
+        # Set default timeout to 600 seconds (10 minutes)
         actual_timeout = timeout if timeout is not None else consts.DEFAULT_PROMPT_EXECUTE_TIMEOUT
         
-        # 验证timeout参数
+        # Validate timeout parameter
         self._validate_timeout(actual_timeout)
             
         request = self._build_execute_request(
@@ -451,15 +452,15 @@ class PromptProvider:
             variable_vals: Optional[Dict[str, Any]] = None,
             messages: Optional[List[Message]] = None
     ) -> ExecuteRequest:
-        """构建执行请求"""
-        # 构建prompt_identifier
+        """Build execute request"""
+        # Build prompt_identifier
         prompt_identifier = PromptQuery(
             prompt_key=prompt_key,
             version=version if version else None,
             label=label if label else None
         )
 
-        # 构建variable_vals
+        # Build variable_vals
         variable_vals_list = None
         if variable_vals:
             variable_vals_list = []
@@ -478,10 +479,10 @@ class PromptProvider:
                     elif all(isinstance(item, ContentPart) for item in value):
                         var_val.multi_part_values = value
                     else:
-                        # 对于其他类型的list，转换为JSON字符串
+                        # For other types of list, convert to JSON string
                         var_val.value = json.dumps(value)
                 else:
-                    # 对于其他类型，转换为JSON字符串
+                    # For other types, convert to JSON string
                     var_val.value = json.dumps(value)
 
                 variable_vals_list.append(var_val)
@@ -494,7 +495,7 @@ class PromptProvider:
         )
 
     def _validate_timeout(self, timeout: int) -> None:
-        """验证超时参数"""
+        """Validate timeout parameter"""
         if not isinstance(timeout, int):
             raise ValueError("timeout must be an integer")
         if timeout <= 0:

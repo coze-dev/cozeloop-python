@@ -19,61 +19,61 @@ logger = logging.getLogger(__name__)
 
 class ExecuteStreamReader(BaseStreamReader[ExecuteResult]):
     """
-    Prompt执行结果的StreamReader实现
+    StreamReader implementation for Prompt execution results
     
-    继承自BaseStreamReader，实现具体的SSE数据解析逻辑
-    将SSE事件中的数据解析为ExecuteResult对象
-    支持同步和异步迭代器模式，提供完整的流式处理能力
-    直接实现上下文管理器，无需单独的Context类
+    Inherits from BaseStreamReader, implements specific SSE data parsing logic
+    Parses data from SSE events into ExecuteResult objects
+    Supports synchronous and asynchronous iterator patterns, providing complete streaming processing capabilities
+    Directly implements context manager, no separate Context class needed
     """
     
     def __init__(self, stream_context, log_id: str = ""):
         """
-        初始化ExecuteStreamReader
+        Initialize ExecuteStreamReader
         
         Args:
-            stream_context: 流上下文管理器
-            log_id: 日志ID，用于错误追踪
+            stream_context: Stream context manager
+            log_id: Log ID for error tracking
         """
         self._stream_context = stream_context
         self._response = None
         self._context_entered = False
         self.log_id = log_id
         self._closed = False
-        # 不调用super().__init__，因为还没有response对象
+        # Don't call super().__init__() because there's no response object yet
     
     def _parse_sse_data(self, sse: ServerSentEvent) -> Optional[ExecuteResult]:
         """
-        解析SSE数据为ExecuteResult对象
+        Parse SSE data into ExecuteResult object
         
         Args:
-            sse: ServerSentEvent对象
+            sse: ServerSentEvent object
             
         Returns:
-            Optional[ExecuteResult]: 解析后的ExecuteResult对象，如果不需要返回则为None
+            Optional[ExecuteResult]: Parsed ExecuteResult object, None if no return needed
         """
-        # 跳过空数据
+        # Skip empty data
         if not sse.data or sse.data.strip() == "":
             return None
         
-        # 跳过非data事件
+        # Skip non-data events
         if sse.event and sse.event != "data":
             logger.debug(f"Skipping non-data event: {sse.event}")
             return None
         
         try:
-            # 解析JSON数据
+            # Parse JSON data
             data_dict = sse.json()
             
-            # 验证数据结构
+            # Validate data structure
             if not isinstance(data_dict, dict):
                 logger.warning(f"Invalid SSE data format, expected dict, got {type(data_dict)}")
                 return None
             
-            # 将字典转换为ExecuteData对象
+            # Convert dictionary to ExecuteData object
             execute_data = ExecuteData.model_validate(data_dict)
             
-            # 转换为ExecuteResult
+            # Convert to ExecuteResult
             result = convert_execute_data_to_result(execute_data)
             
             logger.debug(f"Successfully parsed SSE data to ExecuteResult: {result}")
@@ -90,20 +90,20 @@ class ExecuteStreamReader(BaseStreamReader[ExecuteResult]):
             return None
     
     def __enter__(self):
-        """同步上下文管理器入口"""
+        """Synchronous context manager entry"""
         if not self._context_entered:
-            self._response = self._stream_context.__enter__()            # 检查HTTP状态码
+            self._response = self._stream_context.__enter__()            # Check HTTP status code
             if self._response.status_code != 200:
                 try:
-                    # 先读取完整响应内容
+                    # Read complete response content first
                     self._response.read()
                     
-                    # 现在可以安全调用json()
+                    # Now can safely call json()
                     error_data = self._response.json()
                     log_id = self._response.headers.get("x-tt-logid", "")
                     error_code = error_data.get('code', 0)
                     error_msg = error_data.get('msg', 'Unknown error')
-                    # 确保关闭stream_context
+                    # Ensure stream_context is closed
                     self._stream_context.__exit__(None, None, None)
                     raise RemoteServiceError(self._response.status_code, error_code, error_msg, log_id)
                 except Exception as e:
@@ -113,75 +113,75 @@ class ExecuteStreamReader(BaseStreamReader[ExecuteResult]):
                     from cozeloop.internal.consts.error import InternalError
                     raise InternalError(f"Failed to parse error response: {e}")
             
-            # 初始化BaseStreamReader的属性
+            # Initialize BaseStreamReader attributes
             super().__init__(self._response, self.log_id)
             self._context_entered = True
         
         return self
 
     def __exit__(self, exc_type, exc_val, exc_tb):
-        """同步上下文管理器出口"""
+        """Synchronous context manager exit"""
         self.close()
         if self._context_entered:
             return self._stream_context.__exit__(exc_type, exc_val, exc_tb)
 
     async def __aenter__(self):
-        """异步上下文管理器入口"""
+        """Asynchronous context manager entry"""
         if not self._context_entered:
-            self._response = self._stream_context.__enter__()            # 检查HTTP状态码（同步版本逻辑）
+            self._response = await self._stream_context.__aenter__()            # Check HTTP status code (async version logic)
             if self._response.status_code != 200:
                 try:
-                    # 先读取完整响应内容
+                    # Read complete response content first
                     await self._response.aread()
                     
-                    # 现在可以安全调用json()
+                    # Now can safely call json()
                     error_data = self._response.json()
                     log_id = self._response.headers.get("x-tt-logid", "")
                     error_code = error_data.get('code', 0)
                     error_msg = error_data.get('msg', 'Unknown error')
-                    self._stream_context.__exit__(None, None, None)
+                    await self._stream_context.__aexit__(None, None, None)
                     raise RemoteServiceError(self._response.status_code, error_code, error_msg, log_id)
                 except Exception as e:
-                    self._stream_context.__exit__(None, None, None)
+                    await self._stream_context.__aexit__(None, None, None)
                     if isinstance(e, RemoteServiceError):
                         raise
                     from cozeloop.internal.consts.error import InternalError
                     raise InternalError(f"Failed to parse error response: {e}")
             
-            # 初始化BaseStreamReader的属性
+            # Initialize BaseStreamReader attributes
             super().__init__(self._response, self.log_id)
             self._context_entered = True
         
         return self
 
     async def __aexit__(self, exc_type, exc_val, exc_tb):
-        """异步上下文管理器出口"""
+        """Asynchronous context manager exit"""
         await self.aclose()
         if self._context_entered:
-            return self._stream_context.__exit__(exc_type, exc_val, exc_tb)
+            return await self._stream_context.__aexit__(exc_type, exc_val, exc_tb)
     
     def __iter__(self):
-        """支持for循环直接读取"""
+        """Support direct reading with for loop"""
         if not self._context_entered:
             self.__enter__()
         return super().__iter__()
 
     def __aiter__(self):
-        """支持async for循环直接读取"""
-        # 注意：异步版本需要特殊处理
+        """Support direct reading with async for loop"""
+        # Note: Async version requires special handling
         return self._aiter_impl()
 
     async def _aiter_impl(self):
-        """异步迭代器实现"""
+        """Async iterator implementation"""
         if not self._context_entered:
             await self.__aenter__()
         async for item in super().__aiter__():
             yield item
     
     def close(self) -> None:
-        """关闭流"""
+        """Close stream"""
         self._closed = True
-        # 如果还没有进入上下文，直接关闭stream_context
+        # If context hasn't been entered yet, directly close stream_context
         if not self._context_entered:
             if hasattr(self._stream_context, '__exit__'):
                 try:
@@ -190,11 +190,12 @@ class ExecuteStreamReader(BaseStreamReader[ExecuteResult]):
                     pass
             return
         
-        # 如果已经进入上下文，调用父类的close方法
+        
+        # If context has been entered, call parent class close method
         if hasattr(self, 'response'):
             super().close()
         else:
-            # 如果response属性不存在，只关闭stream_context
+            # If response attribute doesn't exist, only close stream_contextt
             if hasattr(self._stream_context, '__exit__'):
                 try:
                     self._stream_context.__exit__(None, None, None)
@@ -202,24 +203,24 @@ class ExecuteStreamReader(BaseStreamReader[ExecuteResult]):
                     pass
 
     async def aclose(self) -> None:
-        """异步关闭流"""
+        """Asynchronously close stream"""
         self._closed = True
-        # 如果还没有进入上下文，直接关闭stream_context
+        # If context hasn't been entered yet, directly close stream_context
         if not self._context_entered:
-            if hasattr(self._stream_context, '__exit__'):
+            if hasattr(self._stream_context, '__aexit__'):
                 try:
-                    self._stream_context.__exit__(None, None, None)
+                    await self._stream_context.__aexit__(None, None, None)
                 except Exception:
                     pass
             return
         
-        # 如果已经进入上下文，调用父类的aclose方法
+        # If context has been entered, call parent class aclose method
         if hasattr(self, 'response'):
             await super().aclose()
         else:
-            # 如果response属性不存在，只关闭stream_context
-            if hasattr(self._stream_context, '__exit__'):
+            # If response attribute doesn't exist, only close stream_context
+            if hasattr(self._stream_context, '__aexit__'):
                 try:
-                    self._stream_context.__exit__(None, None, None)
+                    await self._stream_context.__aexit__(None, None, None)
                 except Exception:
                     pass

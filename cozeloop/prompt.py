@@ -51,16 +51,16 @@ class PromptClient(ABC):
         timeout: Optional[int] = None
     ) -> Union[ExecuteResult, StreamReader[ExecuteResult]]:
         """
-        执行Prompt请求
+        Execute Prompt request
         
-        :param prompt_key: prompt的唯一标识
-        :param version: prompt版本，可选
-        :param label: prompt标签，可选
-        :param variable_vals: 变量值字典，可选
-        :param messages: 消息列表，可选
-        :param stream: 是否流式返回，默认False
-        :param timeout: 请求超时时间（秒），可选，默认为600秒（10分钟）
-        :return: stream=False时返回ExecuteResult，stream=True时返回StreamReader[ExecuteResult]
+        :param prompt_key: Unique identifier of the prompt
+        :param version: Prompt version, optional
+        :param label: Prompt label, optional
+        :param variable_vals: Variable values dictionary, optional
+        :param messages: Message list, optional
+        :param stream: Whether to return stream response, default False
+        :param timeout: Request timeout (seconds), optional, default is 600 seconds (10 minutes)
+        :return: Returns ExecuteResult when stream=False, returns StreamReader[ExecuteResult] when stream=True
         """
 
     @abstractmethod  
@@ -76,14 +76,14 @@ class PromptClient(ABC):
         timeout: Optional[int] = None
     ) -> Union[ExecuteResult, StreamReader[ExecuteResult]]:
         """
-        异步执行Prompt请求
+        Asynchronously execute Prompt request
         
-        :param prompt_key: prompt的唯一标识
-        :param version: prompt版本，可选
-        :param label: prompt标签，可选
-        :param variable_vals: 变量值字典，可选
-        :param messages: 消息列表，可选
-        :param stream: 是否流式返回，默认False
-        :param timeout: 请求超时时间（秒），可选，默认为600秒（10分钟）
-        :return: stream=False时返回ExecuteResult，stream=True时返回StreamReader[ExecuteResult]
+        :param prompt_key: Unique identifier of the prompt
+        :param version: Prompt version, optional
+        :param label: Prompt label, optional
+        :param variable_vals: Variable values dictionary, optional
+        :param messages: Message list, optional
+        :param stream: Whether to return stream response, default False
+        :param timeout: Request timeout (seconds), optional, default is 600 seconds (10 minutes)
+        :return: Returns ExecuteResult when stream=False, returns StreamReader[ExecuteResult] when stream=True
         """

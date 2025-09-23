@@ -21,20 +21,20 @@ logger = logging.getLogger(__name__)
 
 class BaseStreamReader(StreamReader[T], ABC, Generic[T]):
     """
-    通用StreamReader基类
+    Generic StreamReader base class
     
-    基于Fornax的Stream设计模式，集成SSEDecoder进行SSE数据解码
-    支持同步和异步迭代器模式，实现上下文管理器
-    提供统一的错误处理机制和资源管理
+    Based on Fornax's Stream design pattern, integrates SSEDecoder for SSE data decoding
+    Supports synchronous and asynchronous iterator patterns, implements context manager
+    Provides unified error handling mechanism and resource management
     """
     
     def __init__(self, response: httpx.Response, log_id: str = ""):
         """
-        初始化BaseStreamReader
+        Initialize BaseStreamReader
         
         Args:
-            response: httpx响应对象
-            log_id: 日志ID，用于错误追踪
+            response: httpx response object
+            log_id: Log ID for error tracking
         """
         self.response = response
         self.log_id = log_id
@@ -46,22 +46,22 @@ class BaseStreamReader(StreamReader[T], ABC, Generic[T]):
     @abstractmethod
     def _parse_sse_data(self, sse: ServerSentEvent) -> Optional[T]:
         """
-        解析SSE数据为业务对象，子类必须实现
+        Parse SSE data into business object, must be implemented by subclasses
         
         Args:
-            sse: ServerSentEvent对象
+            sse: ServerSentEvent object
             
         Returns:
-            Optional[T]: 解析后的业务对象，如果不需要返回则为None
+            Optional[T]: Parsed business object, None if no return needed
         """
         pass
     
     def _iter_events(self) -> Iterator[ServerSentEvent]:
         """
-        迭代SSE事件
+        Iterate SSE events
         
         Yields:
-            ServerSentEvent: 解码后的SSE事件
+            ServerSentEvent: Decoded SSE events
         """
         try:
             for sse in self._decoder.iter_bytes(self.response.iter_bytes()):
@@ -72,15 +72,14 @@ class BaseStreamReader(StreamReader[T], ABC, Generic[T]):
     
     async def _aiter_events(self) -> AsyncIterator[ServerSentEvent]:
         """
-        异步迭代SSE事件
+        Asynchronously iterate SSE events
         
         Yields:
-            ServerSentEvent: 解码后的SSE事件
+            ServerSentEvent: Decoded SSE events
         """
         try:
-            # 由于httpx.stream()返回的是同步流，即使在异步上下文中也需要使用同步迭代
-            # 将同步迭代包装成异步生成器
-            for sse in self._decoder.iter_bytes(self.response.iter_bytes()):
+            # Use async iterator
+            async for sse in self._decoder.aiter_bytes(self.response.aiter_bytes()):
                 yield sse
         except Exception as e:
             logger.error(f"Error async iterating SSE events: {e}")
@@ -88,13 +87,13 @@ class BaseStreamReader(StreamReader[T], ABC, Generic[T]):
     
     def _handle_sse_error(self, sse: ServerSentEvent) -> None:
         """
-        处理SSE事件中的错误
+        Handle errors in SSE events
         
         Args:
-            sse: ServerSentEvent对象
+            sse: ServerSentEvent object
             
         Raises:
-            RemoteServiceError: 当检测到错误事件时
+            RemoteServiceError: When error event is detected
         """
         if not sse.data:
             return
@@ -102,15 +101,15 @@ class BaseStreamReader(StreamReader[T], ABC, Generic[T]):
         try:
             data = sse.json()
             
-            # 检查是否包含错误信息
+            # Check if contains error information
             if isinstance(data, dict):
-                # 检查错误码字段
+                # Check error code field
                 if 'code' in data and data['code'] != 0:
                     error_code = data.get('code', 0)
                     error_msg = data.get('msg', 'Unknown error')
                     raise RemoteServiceError(200, error_code, error_msg, self.log_id)
                 
-                # 检查error字段
+                # Check error field
                 if 'error' in data:
                     error_info = data['error']
                     if isinstance(error_info, dict):
@@ -122,20 +121,20 @@ class BaseStreamReader(StreamReader[T], ABC, Generic[T]):
                     raise RemoteServiceError(200, error_code, error_msg, self.log_id)
                     
         except json.JSONDecodeError:
-            # 如果不是JSON格式，忽略错误检查
+            # If not JSON format, ignore error checking
             pass
         except RemoteServiceError:
-            # 重新抛出RemoteServiceError
+            # Re-raise RemoteServiceError
             raise
         except Exception as e:
             logger.warning(f"Error checking SSE error: {e}")
     
     def __stream__(self) -> Iterator[T]:
         """
-        核心流处理逻辑
+        Core stream processing logic
         
         Yields:
-            T: 解析后的业务对象
+            T: Parsed business objects
         """
         if self._closed:
             return
@@ -145,10 +144,10 @@ class BaseStreamReader(StreamReader[T], ABC, Generic[T]):
                 if self._closed:
                     break
                 
-                # 检查错误
+                # Check for errors
                 self._handle_sse_error(sse)
                 
-                # 解析数据
+                # Parse data
                 result = self._parse_sse_data(sse)
                 if result is not None:
                     yield result
@@ -163,10 +162,10 @@ class BaseStreamReader(StreamReader[T], ABC, Generic[T]):
     
     async def __astream__(self) -> AsyncIterator[T]:
         """
-        异步核心流处理逻辑
+        Asynchronous core stream processing logic
         
         Yields:
-            T: 解析后的业务对象
+            T: Parsed business objects
         """
         if self._closed:
             return
@@ -176,10 +175,10 @@ class BaseStreamReader(StreamReader[T], ABC, Generic[T]):
                 if self._closed:
                     break
                 
-                # 检查错误
+                # Check for errors
                 self._handle_sse_error(sse)
                 
-                # 解析数据
+                # Parse data
                 result = self._parse_sse_data(sse)
                 if result is not None:
                     yield result
@@ -192,15 +191,15 @@ class BaseStreamReader(StreamReader[T], ABC, Generic[T]):
         finally:
             self._closed = True
     
-    # 同步迭代器接口
+    # Synchronous iterator interface
     def __iter__(self) -> Iterator[T]:
-        """支持同步迭代 - for循环直接读取"""
+        """Support synchronous iteration - direct reading with for loop"""
         if self._sync_iterator is None:
             self._sync_iterator = self.__stream__()
         return self._sync_iterator
     
     def __next__(self) -> T:
-        """支持next()函数调用"""
+        """Support next() function call"""
         if self._closed:
             raise StopIteration("Stream is closed")
         
@@ -215,15 +214,15 @@ class BaseStreamReader(StreamReader[T], ABC, Generic[T]):
             self._closed = True
             raise StopIteration from e
     
-    # 异步迭代器接口
+    # Asynchronous iterator interface
     def __aiter__(self) -> AsyncIterator[T]:
-        """支持异步迭代 - async for循环直接读取"""
+        """Support asynchronous iteration - direct reading with async for loop"""
         if self._async_iterator is None:
             self._async_iterator = self.__astream__()
         return self._async_iterator
     
     async def __anext__(self) -> T:
-        """支持async next()调用"""
+        """Support async next() call"""
         if self._closed:
             raise StopAsyncIteration("Stream is closed")
         
@@ -238,37 +237,37 @@ class BaseStreamReader(StreamReader[T], ABC, Generic[T]):
             self._closed = True
             raise StopAsyncIteration from e
     
-    # 上下文管理器接口
+    # Context manager interface
     def __enter__(self) -> BaseStreamReader[T]:
-        """同步上下文管理器入口"""
+        """Synchronous context manager entry"""
         return self
     
     def __exit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        """同步上下文管理器出口"""
+        """Synchronous context manager exit"""
         self.close()
     
     async def __aenter__(self) -> BaseStreamReader[T]:
-        """异步上下文管理器入口"""
+        """Asynchronous context manager entry"""
         return self
     
     async def __aexit__(self, exc_type: Any, exc_val: Any, exc_tb: Any) -> None:
-        """异步上下文管理器出口"""
+        """Asynchronous context manager exit"""
         await self.aclose()
     
-    # 资源管理
+    # Resource management
     def close(self) -> None:
-        """关闭流"""
+        """Close stream"""
         self._closed = True
         if hasattr(self.response, 'close'):
             self.response.close()
     
     async def aclose(self) -> None:
-        """异步关闭流"""
+        """Asynchronously close stream"""
         self._closed = True
         if hasattr(self.response, 'aclose'):
             await self.response.aclose()
     
     @property
     def closed(self) -> bool:
-        """检查流是否已关闭"""
+        """Check if stream is closed"""
         return self._closed

@@ -295,9 +295,9 @@ class _LoopClient(Client):
         timeout: Optional[int] = None
     ) -> Union[ExecuteResult, StreamReader[ExecuteResult]]:
         """
-        执行Prompt请求
+        Execute Prompt request
         
-        :param timeout: 请求超时时间（秒），可选，默认为600秒（10分钟）
+        :param timeout: Request timeout (seconds), optional, default is 600 seconds (10 minutes)
         """
         if self._closed:
             raise ClientClosedError()
@@ -323,9 +323,9 @@ class _LoopClient(Client):
         timeout: Optional[int] = None
     ) -> Union[ExecuteResult, StreamReader[ExecuteResult]]:
         """
-        异步执行Prompt请求
+        Asynchronously execute Prompt request
         
-        :param timeout: 请求超时时间（秒），可选，默认为600秒（10分钟）
+        :param timeout: Request timeout (seconds), optional, default is 600 seconds (10 minutes)
         """
         if self._closed:
             raise ClientClosedError()
@@ -449,9 +449,9 @@ def execute_prompt(
     timeout: Optional[int] = None
 ) -> Union[ExecuteResult, StreamReader[ExecuteResult]]:
     """
-    执行Prompt请求
+    Execute Prompt request
     
-    :param timeout: 请求超时时间（秒），可选，默认为600秒（10分钟）
+    :param timeout: Request timeout (seconds), optional, default is 600 seconds (10 minutes)
     """
     return get_default_client().execute_prompt(
         prompt_key,
@@ -475,9 +475,9 @@ async def aexecute_prompt(
     timeout: Optional[int] = None
 ) -> Union[ExecuteResult, StreamReader[ExecuteResult]]:
     """
-    异步执行Prompt请求
+    Asynchronously execute Prompt request
     
-    :param timeout: 请求超时时间（秒），可选，默认为600秒（10分钟）
+    :param timeout: Request timeout (seconds), optional, default is 600 seconds (10 minutes)
     """
     return await get_default_client().aexecute_prompt(
         prompt_key,

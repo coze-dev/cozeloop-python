@@ -50,7 +50,7 @@ def main():
         span.set_status_code(ERR_CODE_INTERNAL)
         span.set_error(str(err))
 
-    res_prompt = get_prompt_runner.format_prompt(prompt, {"var1": "你会什么技能"})
+    res_prompt = get_prompt_runner.format_prompt(prompt, {"var1": "What skills do you have?"})
 
     # 3. finish span
     span.finish()
@@ -124,7 +124,7 @@ class GetPromptRunner:
                             PROMPT_KEY: "test_demo",
                             PROMPT_VERSION: "v1.0.1"
                         }),
-                        PROMPT_VERSION: "v1.0.1",  # mock版本
+                        PROMPT_VERSION: "v1.0.1",  # mock version
                         OUTPUT: prompt
                     })
 

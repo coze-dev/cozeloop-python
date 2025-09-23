@@ -8,29 +8,29 @@ T = TypeVar('T')
 
 
 class StreamReader(ABC, Generic[T]):
-    """流式读取器接口"""
+    """Stream reader interface"""
     
     @abstractmethod
     def __iter__(self) -> Iterator[T]:
-        """支持同步迭代 - for循环直接读取"""
+        """Support synchronous iteration - for loop direct reading"""
         pass
     
     @abstractmethod
     def __next__(self) -> T:
-        """支持next()函数调用"""
+        """Support next() function call"""
         pass
     
     @abstractmethod
     def __aiter__(self) -> AsyncIterator[T]:
-        """支持异步迭代 - async for循环直接读取"""
+        """Support asynchronous iteration - async for loop direct reading"""
         pass
     
     @abstractmethod
     async def __anext__(self) -> T:
-        """支持async next()调用"""
+        """Support async next() call"""
         pass
     
     @abstractmethod
     def close(self):
-        """关闭流"""
+        """Close stream"""
         pass

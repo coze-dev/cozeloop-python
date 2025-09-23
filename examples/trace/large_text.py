@@ -82,7 +82,7 @@ def main():
 
         # assuming call llm, input is large text
         try:
-            llm_runner.llm_call("你叫什么名字" + get_large_text())
+            llm_runner.llm_call("What's your name?" + get_large_text())
         except Exception as e:
             # set tag key: `_status_code`
             span.set_status_code(600789111)

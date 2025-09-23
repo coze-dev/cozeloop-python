@@ -50,7 +50,7 @@ from cozeloop.internal.prompt.openapi import (
 
 
 def _convert_role(openapi_role: OpenAPIRole) -> EntityRole:
-    """转换角色类型"""
+    """Convert role type"""
     role_mapping = {
         OpenAPIRole.SYSTEM: EntityRole.SYSTEM,
         OpenAPIRole.USER: EntityRole.USER,
@@ -62,7 +62,7 @@ def _convert_role(openapi_role: OpenAPIRole) -> EntityRole:
 
 
 def _convert_content_type(openapi_type: OpenAPIContentType) -> EntityContentType:
-    """转换内容类型"""
+    """Convert content type"""
     content_type_mapping = {
         OpenAPIContentType.TEXT: EntityContentType.TEXT,
         OpenAPIContentType.IMAGE_URL: EntityContentType.IMAGE_URL,
@@ -73,7 +73,7 @@ def _convert_content_type(openapi_type: OpenAPIContentType) -> EntityContentType
 
 
 def _convert_content_part(openapi_part: OpenAPIContentPart) -> EntityContentPart:
-    """转换内容部分，确保text、image_url、base64_data字段都被转换"""
+    """Convert content part, ensure text, image_url, base64_data fields are all converted"""
     return EntityContentPart(
         type=_convert_content_type(openapi_part.type),
         text=openapi_part.text,
@@ -83,7 +83,7 @@ def _convert_content_part(openapi_part: OpenAPIContentPart) -> EntityContentPart
 
 
 def _convert_function_call(func_call: Optional[OpenAPIFunctionCall]) -> Optional[EntityFunctionCall]:
-    """转换函数调用，确保name、arguments字段都被转换"""
+    """Convert function call, ensure name, arguments fields are all converted"""
     if func_call is None:
         return None
     return EntityFunctionCall(
@@ -93,7 +93,7 @@ def _convert_function_call(func_call: Optional[OpenAPIFunctionCall]) -> Optional
 
 
 def _convert_tool_call(tool_call: OpenAPIToolCall) -> EntityToolCall:
-    """转换工具调用，确保index、id、type、function_call字段都被转换"""
+    """Convert tool call, ensure index, id, type, function_call fields are all converted"""
     return EntityToolCall(
         index=tool_call.index,
         id=tool_call.id,
@@ -103,7 +103,7 @@ def _convert_tool_call(tool_call: OpenAPIToolCall) -> EntityToolCall:
 
 
 def _convert_message(msg: OpenAPIMessage) -> EntityMessage:
-    """转换消息，确保role、content、reasoning_content、tool_call_id、tool_calls字段都被转换"""
+    """Convert message, ensure role, content, reasoning_content, tool_call_id, tool_calls fields are all converted"""
     return EntityMessage(
         role=_convert_role(msg.role),
         reasoning_content=msg.reasoning_content,
@@ -115,7 +115,7 @@ def _convert_message(msg: OpenAPIMessage) -> EntityMessage:
 
 
 def _convert_variable_type(openapi_type: OpenAPIVariableType) -> EntityVariableType:
-    """转换变量类型"""
+    """Convert variable type"""
     type_mapping = {
         OpenAPIVariableType.STRING: EntityVariableType.STRING,
         OpenAPIVariableType.PLACEHOLDER: EntityVariableType.PLACEHOLDER,
@@ -134,7 +134,7 @@ def _convert_variable_type(openapi_type: OpenAPIVariableType) -> EntityVariableT
 
 
 def _convert_variable_def(var_def: OpenAPIVariableDef) -> EntityVariableDef:
-    """转换变量定义"""
+    """Convert variable definition"""
     return EntityVariableDef(
         key=var_def.key,
         desc=var_def.desc,
@@ -143,7 +143,7 @@ def _convert_variable_def(var_def: OpenAPIVariableDef) -> EntityVariableDef:
 
 
 def _convert_function(func: OpenAPIFunction) -> EntityFunction:
-    """转换函数定义"""
+    """Convert function definition"""
     return EntityFunction(
         name=func.name,
         description=func.description,
@@ -152,7 +152,7 @@ def _convert_function(func: OpenAPIFunction) -> EntityFunction:
 
 
 def _convert_tool_type(openapi_tool_type: OpenAPIToolType) -> EntityToolType:
-    """转换工具类型"""
+    """Convert tool type"""
     type_mapping = {
         OpenAPIToolType.FUNCTION: EntityToolType.FUNCTION,
     }
@@ -160,7 +160,7 @@ def _convert_tool_type(openapi_tool_type: OpenAPIToolType) -> EntityToolType:
 
 
 def _convert_tool(tool: OpenAPITool) -> EntityTool:
-    """转换工具定义"""
+    """Convert tool definition"""
     return EntityTool(
         type=_convert_tool_type(tool.type),
         function=_convert_function(tool.function) if tool.function else None
@@ -168,7 +168,7 @@ def _convert_tool(tool: OpenAPITool) -> EntityTool:
 
 
 def _convert_tool_choice_type(openapi_tool_choice_type: OpenAPIChoiceType) -> EntityToolChoiceType:
-    """转换工具选择类型"""
+    """Convert tool choice type"""
     choice_mapping = {
         OpenAPIChoiceType.AUTO: EntityToolChoiceType.AUTO,
         OpenAPIChoiceType.NONE: EntityToolChoiceType.NONE
@@ -177,14 +177,14 @@ def _convert_tool_choice_type(openapi_tool_choice_type: OpenAPIChoiceType) -> En
 
 
 def _convert_tool_call_config(config: OpenAPIToolCallConfig) -> EntityToolCallConfig:
-    """转换工具调用配置"""
+    """Convert tool call configuration"""
     return EntityToolCallConfig(
         tool_choice=_convert_tool_choice_type(config.tool_choice)
     )
 
 
 def _convert_llm_config(config: OpenAPIModelConfig) -> EntityModelConfig:
-    """转换LLM配置"""
+    """Convert LLM configuration"""
     return EntityModelConfig(
         temperature=config.temperature,
         max_tokens=config.max_tokens,
@@ -197,7 +197,7 @@ def _convert_llm_config(config: OpenAPIModelConfig) -> EntityModelConfig:
 
 
 def _convert_template_type(openapi_template_type: OpenAPITemplateType) -> EntityTemplateType:
-    """转换模板类型"""
+    """Convert template type"""
     template_mapping = {
         OpenAPITemplateType.NORMAL: EntityTemplateType.NORMAL,
         OpenAPITemplateType.JINJA2: EntityTemplateType.JINJA2
@@ -206,7 +206,7 @@ def _convert_template_type(openapi_template_type: OpenAPITemplateType) -> Entity
 
 
 def _convert_prompt_template(template: OpenAPIPromptTemplate) -> EntityPromptTemplate:
-    """转换提示模板"""
+    """Convert prompt template"""
     return EntityPromptTemplate(
         template_type=_convert_template_type(template.template_type),
         messages=[_convert_message(msg) for msg in template.messages] if template.messages else None,
@@ -216,7 +216,7 @@ def _convert_prompt_template(template: OpenAPIPromptTemplate) -> EntityPromptTem
 
 
 def _convert_token_usage(usage: Optional[OpenAPITokenUsage]) -> Optional[EntityTokenUsage]:
-    """转换Token使用统计，确保input_tokens、output_tokens字段都被转换"""
+    """Convert Token usage statistics, ensure input_tokens, output_tokens fields are all converted"""
     if usage is None:
         return None
     return EntityTokenUsage(
@@ -226,7 +226,7 @@ def _convert_token_usage(usage: Optional[OpenAPITokenUsage]) -> Optional[EntityT
 
 
 def _convert_prompt(prompt: OpenAPIPrompt) -> EntityPrompt:
-    """转换OpenAPI Prompt对象到entity Prompt对象"""
+    """Convert OpenAPI Prompt object to entity Prompt object"""
     return EntityPrompt(
         workspace_id=prompt.workspace_id,
         prompt_key=prompt.prompt_key,
@@ -238,38 +238,38 @@ def _convert_prompt(prompt: OpenAPIPrompt) -> EntityPrompt:
     )
 
 
-# 公开的转换函数
+# Public conversion functions
 def to_content_part(openapi_part: OpenAPIContentPart) -> EntityContentPart:
-    """公开的内容部分转换函数"""
+    """Public content part conversion function"""
     return _convert_content_part(openapi_part)
 
 
 def to_prompt(openapi_prompt: OpenAPIPrompt) -> EntityPrompt:
-    """公开的提示转换函数"""
+    """Public prompt conversion function"""
     return _convert_prompt(openapi_prompt)
 
 
 def to_message(openapi_message: OpenAPIMessage) -> EntityMessage:
-    """公开的消息转换函数"""
+    """Public message conversion function"""
     return _convert_message(openapi_message)
 
 
 def to_token_usage(openapi_usage: Optional[OpenAPITokenUsage]) -> Optional[EntityTokenUsage]:
-    """公开的Token使用统计转换函数"""
+    """Public Token usage statistics conversion function"""
     return _convert_token_usage(openapi_usage)
 
 
 def convert_execute_data_to_result(data) -> 'ExecuteResult':
-    """将ExecuteData转换为ExecuteResult
+    """Convert ExecuteData to ExecuteResult
     
-    统一的转换入口，复用现有转换逻辑
-    用于替代 prompt.py 和 reader.py 中的重复实现
+    Unified conversion entry point, reusing existing conversion logic
+    Used to replace duplicate implementations in prompt.py and reader.py
     
     Args:
-        data: ExecuteData对象，包含执行结果数据
+        data: ExecuteData object containing execution result data
         
     Returns:
-        ExecuteResult: 转换后的执行结果对象
+        ExecuteResult: Converted execution result object
     """
     from cozeloop.entities.prompt import ExecuteResult
 
@@ -281,7 +281,7 @@ def convert_execute_data_to_result(data) -> 'ExecuteResult':
 
 
 def to_openapi_message(message: EntityMessage) -> OpenAPIMessage:
-    """将EntityMessage转换为OpenAPIMessage"""
+    """Convert EntityMessage to OpenAPIMessage"""
     return OpenAPIMessage(
         role=_to_openapi_role(message.role),
         reasoning_content=message.reasoning_content,
@@ -294,7 +294,7 @@ def to_openapi_message(message: EntityMessage) -> OpenAPIMessage:
 
 
 def _to_openapi_role(role: EntityRole) -> OpenAPIRole:
-    """将EntityRole转换为OpenAPIRole"""
+    """Convert EntityRole to OpenAPIRole"""
     role_mapping = {
         EntityRole.SYSTEM: OpenAPIRole.SYSTEM,
         EntityRole.USER: OpenAPIRole.USER,
@@ -306,7 +306,7 @@ def _to_openapi_role(role: EntityRole) -> OpenAPIRole:
 
 
 def _to_openapi_content_part(part: EntityContentPart) -> OpenAPIContentPart:
-    """将EntityContentPart转换为OpenAPIContentPart"""
+    """Convert EntityContentPart to OpenAPIContentPart"""
     return OpenAPIContentPart(
         type=_to_openapi_content_type(part.type),
         text=part.text,
@@ -316,7 +316,7 @@ def _to_openapi_content_part(part: EntityContentPart) -> OpenAPIContentPart:
 
 
 def _to_openapi_content_type(content_type: EntityContentType) -> OpenAPIContentType:
-    """将EntityContentType转换为OpenAPIContentType"""
+    """Convert EntityContentType to OpenAPIContentType"""
     type_mapping = {
         EntityContentType.TEXT: OpenAPIContentType.TEXT,
         EntityContentType.IMAGE_URL: OpenAPIContentType.IMAGE_URL,
@@ -327,7 +327,7 @@ def _to_openapi_content_type(content_type: EntityContentType) -> OpenAPIContentT
 
 
 def _to_openapi_tool_call(tool_call: EntityToolCall) -> OpenAPIToolCall:
-    """将EntityToolCall转换为OpenAPIToolCall"""
+    """Convert EntityToolCall to OpenAPIToolCall"""
     return OpenAPIToolCall(
         index=tool_call.index,
         id=tool_call.id,
@@ -337,7 +337,7 @@ def _to_openapi_tool_call(tool_call: EntityToolCall) -> OpenAPIToolCall:
 
 
 def _to_openapi_function_call(func_call: Optional[EntityFunctionCall]) -> Optional[OpenAPIFunctionCall]:
-    """将EntityFunctionCall转换为OpenAPIFunctionCall"""
+    """Convert EntityFunctionCall to OpenAPIFunctionCall"""
     if func_call is None:
         return None
     return OpenAPIFunctionCall(
@@ -347,16 +347,16 @@ def _to_openapi_function_call(func_call: Optional[EntityFunctionCall]) -> Option
 
 
 def _to_openapi_tool_type(tool_type: EntityToolType) -> OpenAPIToolType:
-    """将EntityToolType转换为OpenAPIToolType"""
+    """Convert EntityToolType to OpenAPIToolType"""
     type_mapping = {
         EntityToolType.FUNCTION: OpenAPIToolType.FUNCTION,
     }
     return type_mapping.get(tool_type, OpenAPIToolType.FUNCTION)
 
 
-# Span相关转换函数
+# Span-related conversion functions
 def _to_span_prompt_input(messages: List[EntityMessage], variables: Dict[str, PromptVariable]) -> PromptInput:
-    """转换到Span的提示输入"""
+    """Convert to Span prompt input"""
     return PromptInput(
         templates=_to_span_messages(messages),
         arguments=_to_span_arguments(variables),
@@ -364,14 +364,14 @@ def _to_span_prompt_input(messages: List[EntityMessage], variables: Dict[str, Pr
 
 
 def _to_span_prompt_output(messages: List[EntityMessage]) -> PromptOutput:
-    """转换到Span的提示输出"""
+    """Convert to Span prompt output"""
     return PromptOutput(
         prompts=_to_span_messages(messages)
     )
 
 
 def _to_span_messages(messages: List[EntityMessage]) -> List[ModelMessage]:
-    """转换消息列表到Span格式"""
+    """Convert message list to Span format"""
     return [
         ModelMessage(
             role=msg.role,
@@ -382,23 +382,23 @@ def _to_span_messages(messages: List[EntityMessage]) -> List[ModelMessage]:
 
 
 def _to_span_arguments(arguments: Dict[str, PromptVariable]) -> List[PromptArgument]:
-    """转换参数字典到Span格式"""
+    """Convert argument dictionary to Span format"""
     return [
         to_span_argument(key, value) for key, value in arguments.items()
     ]
 
 
 def to_span_argument(key: str, value: any) -> PromptArgument:
-    """转换单个参数到Span格式"""
+    """Convert single argument to Span format"""
     converted_value = str(value)
     value_type = PromptArgumentValueType.TEXT
 
-    # 判断是否是多模态变量
+    # Check if it's a multimodal variable
     if isinstance(value, list) and all(isinstance(part, EntityContentPart) for part in value):
         value_type = PromptArgumentValueType.MODEL_MESSAGE_PART
         converted_value = [_to_span_content_part(part) for part in value]
 
-    # 判断是否是placeholder变量
+    # Check if it's a placeholder variable
     if isinstance(value, list) and all(isinstance(part, EntityMessage) for part in value):
         value_type = PromptArgumentValueType.MODEL_MESSAGE
         converted_value = _to_span_messages(value)
@@ -412,7 +412,7 @@ def to_span_argument(key: str, value: any) -> PromptArgument:
 
 
 def _to_span_content_type(entity_type: EntityContentType) -> ModelMessagePartType:
-    """转换内容类型到Span格式"""
+    """Convert content type to Span format"""
     span_content_type_mapping = {
         EntityContentType.TEXT: ModelMessagePartType.TEXT,
         EntityContentType.IMAGE_URL: ModelMessagePartType.IMAGE,
@@ -423,7 +423,7 @@ def _to_span_content_type(entity_type: EntityContentType) -> ModelMessagePartTyp
 
 
 def _to_span_content_part(entity_part: EntityContentPart) -> ModelMessagePart:
-    """转换内容部分到Span格式"""
+    """Convert content part to Span format"""
     image_url = None
     if entity_part.image_url is not None:
         image_url = ModelImageURL(
