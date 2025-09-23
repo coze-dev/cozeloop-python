@@ -42,17 +42,6 @@ class Client:
         return f"{self.api_base_url}{path}"
     def _set_headers(self, headers: Optional[Dict[str, str]] = None) -> Dict[str, str]:
         res = user_agent_header()
-        
-        # 调用传入的header注入函数
-        if self.header_injector:
-            try:
-                injected_headers = self.header_injector()
-                if injected_headers:
-                    res.update(injected_headers)
-            except Exception as e:
-                # 静默处理异常，不影响正常请求
-                logger.debug(f"Header injection failed: {e}")
-        
         if headers:
             res.update(headers)
         res[consts.AUTHORIZE_HEADER] = f"Bearer {self.auth.token}"
@@ -63,6 +52,14 @@ class Client:
         ppe_env = os.getenv("x_use_ppe")
         if ppe_env:
             res["x-use-ppe"] = "1"
+
+        if self.header_injector:
+            try:
+                injected_headers = self.header_injector()
+                if injected_headers:
+                    res.update(injected_headers)
+            except Exception as e:
+                logger.debug(f"Header injection failed: {e}")
 
         return res
 

@@ -14,6 +14,8 @@ Demonstrates:
 import asyncio
 import os
 
+from anyio import sleep
+
 from cozeloop import new_client, Client
 from cozeloop.entities.prompt import Message, Role, ExecuteResult
 
@@ -141,7 +143,8 @@ async def async_stream_example(client: Client) -> None:
 async def main():
     """Main function"""
     client = setup_client()
-    
+
+    root_span = client.start_span("root", "custom")
     try:
         # Sync non-stream call
         sync_non_stream_example(client)
@@ -157,6 +160,7 @@ async def main():
         
     finally:
         # Close client
+        root_span.finish()
         if hasattr(client, 'close'):
             client.close()
 
