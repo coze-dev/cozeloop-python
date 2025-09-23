@@ -9,10 +9,10 @@ from typing import Any, Iterator, Optional, AsyncIterator
 
 class ServerSentEvent:
     """
-    Server-Sent Event (SSE) 数据结构
+    Server-Sent Event (SSE) data structure
     
-    封装SSE事件的各个字段：event, data, id, retry
-    提供JSON解析功能
+    Encapsulates various fields of SSE events: event, data, id, retry
+    Provides JSON parsing functionality
     """
 
     def __init__(
@@ -24,13 +24,13 @@ class ServerSentEvent:
             retry: int | None = None,
     ) -> None:
         """
-        初始化ServerSentEvent
+        Initialize ServerSentEvent
         
         Args:
-            event: 事件类型
-            data: 事件数据
-            id: 事件ID
-            retry: 重试间隔（毫秒）
+            event: Event type
+            data: Event data
+            id: Event ID
+            retry: Retry interval (milliseconds)
         """
         if data is None:
             data = ""
@@ -42,33 +42,33 @@ class ServerSentEvent:
 
     @property
     def event(self) -> str | None:
-        """获取事件类型"""
+        """Get event type"""
         return self._event
 
     @property
     def id(self) -> str | None:
-        """获取事件ID"""
+        """Get event ID"""
         return self._id
 
     @property
     def retry(self) -> int | None:
-        """获取重试间隔"""
+        """Get retry interval"""
         return self._retry
 
     @property
     def data(self) -> str:
-        """获取事件数据"""
+        """Get event data"""
         return self._data
 
     def json(self) -> Any:
         """
-        将data字段解析为JSON对象
+        Parse data field as JSON object
         
         Returns:
-            解析后的JSON对象
+            Parsed JSON object
             
         Raises:
-            json.JSONDecodeError: 当data不是有效的JSON时
+            json.JSONDecodeError: When data is not valid JSON
         """
         return json.loads(self.data)
 
@@ -78,14 +78,14 @@ class ServerSentEvent:
 
 class SSEDecoder:
     """
-    Server-Sent Event (SSE) 解码器
+    Server-Sent Event (SSE) decoder
     
-    负责将字节流解码为ServerSentEvent对象
-    支持SSE协议的完整规范，包括多行数据累积和各种字段处理
+    Responsible for decoding byte streams into ServerSentEvent objects
+    Supports complete SSE protocol specification, including multi-line data accumulation and various field processing
     """
 
     def __init__(self) -> None:
-        """初始化SSE解码器"""
+        """Initialize SSE decoder"""
         self._event: Optional[str] = None
         self._data: list[str] = []
         self._last_event_id: Optional[str] = None
@@ -93,16 +93,16 @@ class SSEDecoder:
 
     def iter_bytes(self, iterator: Iterator[bytes]) -> Iterator[ServerSentEvent]:
         """
-        同步解码字节流为SSE事件
+        Synchronously decode byte stream into SSE events
         
         Args:
-            iterator: 字节流迭代器
+            iterator: Byte stream iterator
             
         Yields:
-            ServerSentEvent: 解码后的SSE事件
+            ServerSentEvent: Decoded SSE events
         """
         for chunk in self._iter_chunks(iterator):
-            # 先分割再解码，确保splitlines()只使用\r和\n
+            # Split first then decode, ensure splitlines() only uses \r and \n
             for raw_line in chunk.splitlines():
                 line = raw_line.decode("utf-8")
                 sse = self.decode(line)
@@ -111,13 +111,13 @@ class SSEDecoder:
 
     def _iter_chunks(self, iterator: Iterator[bytes]) -> Iterator[bytes]:
         """
-        同步处理字节块，确保完整的SSE消息
+        Synchronously process byte chunks, ensuring complete SSE messages
         
         Args:
-            iterator: 字节流迭代器
+            iterator: Byte stream iterator
             
         Yields:
-            bytes: 完整的SSE消息块
+            bytes: Complete SSE message chunks
         """
         data = b""
         for chunk in iterator:
@@ -131,16 +131,16 @@ class SSEDecoder:
 
     async def aiter_bytes(self, iterator: AsyncIterator[bytes]) -> AsyncIterator[ServerSentEvent]:
         """
-        异步解码字节流为SSE事件
+        Asynchronously decode byte stream into SSE events
         
         Args:
-            iterator: 异步字节流迭代器
+            iterator: Asynchronous byte stream iterator
             
         Yields:
-            ServerSentEvent: 解码后的SSE事件
+            ServerSentEvent: Decoded SSE events
         """
         async for chunk in self._aiter_chunks(iterator):
-            # 先分割再解码，确保splitlines()只使用\r和\n
+            # Split first then decode, ensure splitlines() only uses \r and \n
             for raw_line in chunk.splitlines():
                 line = raw_line.decode("utf-8")
                 sse = self.decode(line)
@@ -149,13 +149,13 @@ class SSEDecoder:
 
     async def _aiter_chunks(self, iterator: AsyncIterator[bytes]) -> AsyncIterator[bytes]:
         """
-        异步处理字节块，确保完整的SSE消息
+        Asynchronously process byte chunks, ensuring complete SSE messages
         
         Args:
-            iterator: 异步字节流迭代器
+            iterator: Asynchronous byte stream iterator
             
         Yields:
-            bytes: 完整的SSE消息块
+            bytes: Complete SSE message chunks
         """
         data = b""
         async for chunk in iterator:
@@ -169,16 +169,16 @@ class SSEDecoder:
 
     def decode(self, line: str) -> Optional[ServerSentEvent]:
         """
-        解码单行SSE数据
+        Decode single line SSE data
         
         Args:
-            line: SSE数据行
+            line: SSE data line
             
         Returns:
-            Optional[ServerSentEvent]: 解码后的SSE事件，如果未完成则返回None
+            Optional[ServerSentEvent]: Decoded SSE event, None if not complete
         """
         if not line:
-            # 空行表示事件结束，构造SSE事件
+            # Empty line indicates end of event, construct SSE event
             if not self._event and not self._data and not self._last_event_id and self._retry is None:
                 return None
 
@@ -189,35 +189,36 @@ class SSEDecoder:
                 retry=self._retry,
             )
 
-            # 重置状态，准备下一个事件
+            # Reset state, prepare for next event
             self._event = None
             self._data = []
             self._retry = None
 
             return sse
 
-        # 解析字段
+        # Parse fields
         fieldname, _, value = line.partition(":")
 
+        # Remove leading space from value
         # 去掉值前面的空格
         if value.startswith(" "):
             value = value[1:]
 
-        # 处理各种字段
+        # Process various fields
         if fieldname == "event":
             self._event = value
         elif fieldname == "data":
             self._data.append(value)
         elif fieldname == "id":
-            # 根据SSE规范，id字段不能包含null字符
+            # According to SSE specification, id field cannot contain null characters
             if "\0" not in value:
                 self._last_event_id = value
         elif fieldname == "retry":
             try:
                 self._retry = int(value)
             except (TypeError, ValueError):
-                # 忽略无效的retry值
+                # Ignore invalid retry values
                 pass
-        # 其他字段被忽略
+        # Other fields are ignored
 
         return None
