@@ -130,7 +130,7 @@ class Client:
             json: Union[BaseModel, Dict] = None,
             timeout: Optional[int] = None,
     ):
-        """发起流式POST请求，返回stream_context"""
+        """Initiate streaming POST request, return stream_context"""
         url = self._build_url(path)
         headers = self._set_headers({"Content-Type": "application/json"})
         
@@ -140,7 +140,7 @@ class Client:
         _timeout = timeout if timeout is not None else self.timeout
         
         try:
-            # 返回stream_context，让StreamReader管理上下文
+            # Return stream_context, let StreamReader manage context
             stream_context = self.http_client.stream(
                 "POST",
                 url,
@@ -200,7 +200,7 @@ class Client:
             json: Union[BaseModel, Dict] = None,
             timeout: Optional[int] = None,
     ):
-        """发起异步流式POST请求，返回stream_context"""
+        """Initiate asynchronous streaming POST request, return stream_context"""
         url = self._build_url(path)
         headers = self._set_headers({"Content-Type": "application/json"})
         
@@ -210,7 +210,7 @@ class Client:
         _timeout = timeout if timeout is not None else self.timeout
         
         try:
-            # 返回stream_context，让StreamReader管理上下文
+            # Return stream_context, let StreamReader manage context
             stream_context = self.http_client.astream(
                 "POST",
                 url,

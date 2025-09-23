@@ -36,7 +36,7 @@ def do_lcel_stream_demo():
     lcel_sequence = llm_model | StrOutputParser()
     chunks = []
     for chunk in lcel_sequence.stream(
-            input='用你所学的技巧，帮我生成几个有意思的问题',
+            input='Use your learned techniques to help me generate some interesting questions',
             config=RunnableConfig(callbacks=[trace_callback_handler])
     ):
         chunks.append(chunk)

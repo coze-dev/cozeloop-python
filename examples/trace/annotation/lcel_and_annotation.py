@@ -37,7 +37,7 @@ def do_lcel_and_annotation_demo():
     # execute lcel, and print intermediate results.
     lcel_sequence = llm_model | StrOutputParser()
     output = lcel_sequence.invoke(
-        input='用你所学的技巧，帮我生成几个有意思的问题',
+        input='Use your learned techniques to help me generate some interesting questions',
         config=RunnableConfig(callbacks=[trace_callback_handler])
     )
     print('\n====== model output start ======\n' + output + '\n====== model output finish ======\n')
