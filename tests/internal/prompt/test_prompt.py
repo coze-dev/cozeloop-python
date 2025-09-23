@@ -636,18 +636,18 @@ def test_format_normal_messages_null_message(prompt_provider):
     assert result[1].role == Role.USER
     assert result[1].content == "World"
 def test_validate_variable_values_type_boolean_valid(prompt_provider):
-    """测试有效的 boolean 类型变量"""
+    """Test valid boolean type variable"""
     var_defs = [VariableDef(key="enabled", desc="Enable feature", type=VariableType.BOOLEAN)]
     variables = {"enabled": True}
     
-    # 应该不抛出异常
+    # Should not raise exception
     prompt_provider._validate_variable_values_type(var_defs, variables)
 
 
 def test_validate_variable_values_type_boolean_invalid(prompt_provider):
-    """测试无效的 boolean 类型变量"""
+    """Test invalid boolean type variable"""
     var_defs = [VariableDef(key="enabled", desc="Enable feature", type=VariableType.BOOLEAN)]
-    variables = {"enabled": "true"}  # 字符串而不是布尔值
+    variables = {"enabled": "true"}  # String instead of boolean
     
     with pytest.raises(ValueError) as excinfo:
         prompt_provider._validate_variable_values_type(var_defs, variables)
@@ -656,18 +656,18 @@ def test_validate_variable_values_type_boolean_invalid(prompt_provider):
 
 
 def test_validate_variable_values_type_integer_valid(prompt_provider):
-    """测试有效的 integer 类型变量"""
+    """Test valid integer type variable"""
     var_defs = [VariableDef(key="count", desc="Item count", type=VariableType.INTEGER)]
     variables = {"count": 42}
     
-    # 应该不抛出异常
+    # Should not raise exception
     prompt_provider._validate_variable_values_type(var_defs, variables)
 
 
 def test_validate_variable_values_type_integer_invalid(prompt_provider):
-    """测试无效的 integer 类型变量"""
+    """Test invalid integer type variable"""
     var_defs = [VariableDef(key="count", desc="Item count", type=VariableType.INTEGER)]
-    variables = {"count": "42"}  # 字符串而不是整数
+    variables = {"count": "42"}  # String instead of integer
     
     with pytest.raises(ValueError) as excinfo:
         prompt_provider._validate_variable_values_type(var_defs, variables)
@@ -676,18 +676,18 @@ def test_validate_variable_values_type_integer_invalid(prompt_provider):
 
 
 def test_validate_variable_values_type_float_valid(prompt_provider):
-    """测试有效的 float 类型变量"""
+    """Test valid float type variable"""
     var_defs = [VariableDef(key="temperature", desc="Temperature value", type=VariableType.FLOAT)]
     variables = {"temperature": 3.14}
     
-    # 应该不抛出异常
+    # Should not raise exception
     prompt_provider._validate_variable_values_type(var_defs, variables)
 
 
 def test_validate_variable_values_type_float_invalid(prompt_provider):
-    """测试无效的 float 类型变量"""
+    """Test invalid float type variable"""
     var_defs = [VariableDef(key="temperature", desc="Temperature value", type=VariableType.FLOAT)]
-    variables = {"temperature": "3.14"}  # 字符串而不是浮点数
+    variables = {"temperature": "3.14"}  # String instead of float
     
     with pytest.raises(ValueError) as excinfo:
         prompt_provider._validate_variable_values_type(var_defs, variables)
@@ -696,18 +696,18 @@ def test_validate_variable_values_type_float_invalid(prompt_provider):
 
 
 def test_validate_variable_values_type_array_string_valid(prompt_provider):
-    """测试有效的 array<string> 类型变量"""
+    """Test valid array<string> type variable"""
     var_defs = [VariableDef(key="tags", desc="Tag list", type=VariableType.ARRAY_STRING)]
     variables = {"tags": ["tag1", "tag2", "tag3"]}
     
-    # 应该不抛出异常
+    # Should not raise exception
     prompt_provider._validate_variable_values_type(var_defs, variables)
 
 
 def test_validate_variable_values_type_array_string_invalid_not_list(prompt_provider):
-    """测试无效的 array<string> 类型变量 - 不是列表"""
+    """Test invalid array<string> type variable - not a list"""
     var_defs = [VariableDef(key="tags", desc="Tag list", type=VariableType.ARRAY_STRING)]
-    variables = {"tags": "tag1,tag2,tag3"}  # 字符串而不是列表
+    variables = {"tags": "tag1,tag2,tag3"}  # String instead of list
     
     with pytest.raises(ValueError) as excinfo:
         prompt_provider._validate_variable_values_type(var_defs, variables)
@@ -716,9 +716,9 @@ def test_validate_variable_values_type_array_string_invalid_not_list(prompt_prov
 
 
 def test_validate_variable_values_type_array_string_invalid_wrong_element_type(prompt_provider):
-    """测试无效的 array<string> 类型变量 - 元素类型错误"""
+    """Test invalid array<string> type variable - wrong element type"""
     var_defs = [VariableDef(key="tags", desc="Tag list", type=VariableType.ARRAY_STRING)]
-    variables = {"tags": ["tag1", 123, "tag3"]}  # 包含非字符串元素
+    variables = {"tags": ["tag1", 123, "tag3"]}  # Contains non-string elements
     
     with pytest.raises(ValueError) as excinfo:
         prompt_provider._validate_variable_values_type(var_defs, variables)
@@ -727,18 +727,18 @@ def test_validate_variable_values_type_array_string_invalid_wrong_element_type(p
 
 
 def test_validate_variable_values_type_array_boolean_valid(prompt_provider):
-    """测试有效的 array<boolean> 类型变量"""
+    """Test valid array<boolean> type variable"""
     var_defs = [VariableDef(key="flags", desc="Boolean flags", type=VariableType.ARRAY_BOOLEAN)]
     variables = {"flags": [True, False, True]}
     
-    # 应该不抛出异常
+    # Should not raise exception
     prompt_provider._validate_variable_values_type(var_defs, variables)
 
 
 def test_validate_variable_values_type_array_boolean_invalid(prompt_provider):
-    """测试无效的 array<boolean> 类型变量"""
+    """Test invalid array<boolean> type variable"""
     var_defs = [VariableDef(key="flags", desc="Boolean flags", type=VariableType.ARRAY_BOOLEAN)]
-    variables = {"flags": [True, "false", True]}  # 包含字符串而不是布尔值
+    variables = {"flags": [True, "false", True]}  # Contains string instead of boolean
     
     with pytest.raises(ValueError) as excinfo:
         prompt_provider._validate_variable_values_type(var_defs, variables)
@@ -747,16 +747,16 @@ def test_validate_variable_values_type_array_boolean_invalid(prompt_provider):
 
 
 def test_validate_variable_values_type_array_integer_valid(prompt_provider):
-    """测试有效的 array<integer> 类型变量"""
+    """Test valid array<integer> type variable"""
     var_defs = [VariableDef(key="numbers", desc="Number list", type=VariableType.ARRAY_INTEGER)]
     variables = {"numbers": [1, 2, 3, 4, 5]}
     
-    # 应该不抛出异常
+    # Should not raise exception
     prompt_provider._validate_variable_values_type(var_defs, variables)
 
 
 def test_validate_variable_values_type_array_integer_invalid(prompt_provider):
-    """测试无效的 array<integer> 类型变量"""
+    """Test invalid array<integer> type variable"""
     var_defs = [VariableDef(key="numbers", desc="Number list", type=VariableType.ARRAY_INTEGER)]
     variables = {"numbers": [1, "2", 3]}  # 包含字符串而不是整数
     

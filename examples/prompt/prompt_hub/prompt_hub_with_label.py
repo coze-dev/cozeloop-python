@@ -13,7 +13,7 @@ from cozeloop.spec.tracespec import CALL_OPTIONS, ModelCallOption, ModelMessage,
 
 
 def convert_model_input(messages: List[Message]) -> ModelInput:
-    """将 cozeloop Message 转换为 ModelInput"""
+    """Convert cozeloop Message to ModelInput"""
     model_messages = []
     for message in messages:
         model_messages.append(ModelMessage(
@@ -27,27 +27,27 @@ def convert_model_input(messages: List[Message]) -> ModelInput:
 
 
 class LLMRunner:
-    """LLM 运行器，用于模拟 LLM 调用并设置相关的 span 标签"""
+    """LLM runner for simulating LLM calls and setting related span tags"""
     
     def __init__(self, client):
         self.client = client
 
     def llm_call(self, input_data):
         """
-        模拟 LLM 调用并设置相关的 span 标签
+        Simulate LLM call and set related span tags
         """
         span = self.client.start_span("llmCall", "model")
         try:
-            # 模拟 LLM 处理过程
+            # Simulate LLM processing
             # output = ChatOpenAI().invoke(input=input_data)
 
-            # 模拟响应
+            # Simulate response
             time.sleep(1)
             output = "I'm a robot. I don't have a specific name. You can give me one."
             input_token = 232
             output_token = 1211
 
-            # 设置 span 标签
+            # Set span tags
             span.set_input(convert_model_input(input_data))
             span.set_output(output)
             span.set_model_provider("openai")
