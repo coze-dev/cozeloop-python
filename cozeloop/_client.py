@@ -181,12 +181,14 @@ class _LoopClient(Client):
             jwt_oauth_private_key=jwt_oauth_private_key,
             jwt_oauth_public_key_id=jwt_oauth_public_key_id
         )
+
         http_client = httpclient.Client(
             api_base_url=api_base_url,
             http_client=inner_client,
             auth=auth,
             timeout=timeout,
-            upload_timeout=upload_timeout
+            upload_timeout=upload_timeout,
+            header_injector=self._create_default_header_injector(),
         )
         finish_pro = default_finish_event_processor
         if trace_finish_event_processor:
@@ -218,6 +220,17 @@ class _LoopClient(Client):
             prompt_cache_refresh_interval=prompt_cache_refresh_interval,
             prompt_trace=prompt_trace
         )
+
+    def _create_default_header_injector(self) -> Callable[[], Dict[str, str]]:
+        def default_header_injector() -> Dict[str, str]:
+            try:
+                span = self.get_span_from_context()
+                if span and hasattr(span, 'to_header'):
+                    return span.to_header()
+            except Exception:
+                pass
+            return {}
+        return default_header_injector
 
     def _get_from_env(self, val: str, env_key: str) -> str:
         if val:

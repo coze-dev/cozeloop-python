@@ -1,3 +1,8 @@
+## [0.1.16] - 2025-09-24
+### Added
+- support custom trace connect ptaas trace
+- fix async ptaas httpclient, modify to use AsyncClient
+
 ## [0.1.15] - 2025-09-17
 ### Added
 - modify cachetools version to >=5.5.2,<7.0.0
