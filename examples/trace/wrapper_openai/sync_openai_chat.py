@@ -1,12 +1,20 @@
+import os
+
 from openai import OpenAI
 
 from cozeloop import new_client
 from cozeloop.decorator import observe
 from cozeloop.integration.wrapper import openai_wrapper
 
+
+base_url = os.environ.get('OPENAI_BASE_URL')
+api_key = os.environ.get('OPENAI_API_KEY')
+model_name = os.environ.get('OPENAI_MODEL_NAME')
+
+
 openai_client = openai_wrapper(OpenAI(
-    base_url="https://ark.cn-beijing.volces.com/api/v3", # use ark model, refer: https://www.volcengine.com/docs/82379/1361424
-    api_key="***",
+    base_url=base_url, # use ark model, refer: https://www.volcengine.com/docs/82379/1361424
+    api_key=api_key,
 ))
 
 def retriever():
@@ -26,7 +34,7 @@ def rag(question):
     #         {"role": "system", "content": system_message},
     #         {"role": "user", "content": question},
     #     ],
-    #     model="doubao-1-5-vision-pro-32k-250115",
+    #     model=model_name,
     # )
     # print(res)
 
@@ -36,7 +44,7 @@ def rag(question):
             {"role": "system", "content": system_message},
             {"role": "user", "content": question},
         ],
-        model="doubao-1-5-vision-pro-32k-250115",
+        model=model_name,
         stream=True,
         extra_body={
             "stream_options": {
