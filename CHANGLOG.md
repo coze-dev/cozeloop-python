@@ -1,3 +1,11 @@
+## [0.1.18] - 2025-10-10
+### Added
+- fix prompt syntax error, use Union instead of |
+
+## [0.1.17] - 2025-10-10
+### Added
+- fix trace spec ModelInput field name, from model_tool_choice to tool_choice
+
 ## [0.1.16] - 2025-09-24
 ### Added
 - support custom trace connect ptaas trace

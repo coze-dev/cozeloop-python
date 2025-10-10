@@ -4,7 +4,7 @@
 from __future__ import annotations
 
 import json
-from typing import Any, Iterator, Optional, AsyncIterator
+from typing import Any, Iterator, Optional, AsyncIterator, Union
 
 
 class ServerSentEvent:
@@ -18,10 +18,10 @@ class ServerSentEvent:
     def __init__(
             self,
             *,
-            event: str | None = None,
-            data: str | None = None,
-            id: str | None = None,
-            retry: int | None = None,
+            event: Union[str, None] = None,
+            data: Union[str, None] = None,
+            id: Union[str, None] = None,
+            retry: Union[int, None] = None,
     ) -> None:
         """
         Initialize ServerSentEvent
@@ -41,17 +41,17 @@ class ServerSentEvent:
         self._retry = retry
 
     @property
-    def event(self) -> str | None:
+    def event(self) -> Union[str, None]:
         """Get event type"""
         return self._event
 
     @property
-    def id(self) -> str | None:
+    def id(self) -> Union[str, None]:
         """Get event ID"""
         return self._id
 
     @property
-    def retry(self) -> int | None:
+    def retry(self) -> Union[int, None]:
         """Get retry interval"""
         return self._retry
 

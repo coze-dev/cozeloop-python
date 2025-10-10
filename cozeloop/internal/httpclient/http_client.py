@@ -2,8 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 import logging
-import typing
-from typing import Dict, Type, TypeVar, Any, Generator
+from typing import Dict, Type, TypeVar, Any, Union
 
 import httpx
 import pydantic
@@ -23,17 +22,17 @@ class HTTPClient:
         self.sync_client = httpx.Client()
         self.async_client = httpx.AsyncClient()
 
-    def request(self, method: str, url: URL | str, **kwargs: Any) -> Response:
+    def request(self, method: str, url: Union[URL, str], **kwargs: Any) -> Response:
         return self.sync_client.request(method, url, **kwargs)
 
-    def stream(self, method: str, url: URL | str, **kwargs: Any):
+    def stream(self, method: str, url: Union[URL, str], **kwargs: Any):
         """Return synchronous stream context manager"""
         return self.sync_client.stream(method, url, **kwargs)
 
-    async def arequest(self, method: str, url: URL | str, **kwargs: Any) -> Response:
+    async def arequest(self, method: str, url: Union[URL, str], **kwargs: Any) -> Response:
         return await self.async_client.request(method, url, **kwargs)
 
-    def astream(self, method: str, url: URL | str, **kwargs: Any):
+    def astream(self, method: str, url: Union[URL, str], **kwargs: Any):
         """Return asynchronous stream context manager"""
         return self.async_client.stream(method, url, **kwargs)
 

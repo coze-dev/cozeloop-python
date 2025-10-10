@@ -1,4 +1,4 @@
 # Copyright (c) 2025 Bytedance Ltd. and/or its affiliates
 # SPDX-License-Identifier: MIT
 
-VERSION = 'v0.1.16'
+VERSION = 'v0.1.18'

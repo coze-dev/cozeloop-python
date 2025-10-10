@@ -10,7 +10,7 @@ from pydantic import BaseModel
 class ModelInput(BaseModel):
     messages: Optional[List['ModelMessage']] = None
     tools: Optional[List['ModelTool']] = None
-    model_tool_choice: Optional['ModelToolChoice'] = None
+    tool_choice: Optional['ModelToolChoice'] = None
 
 
 # ModelOutput is the output for model span, for tag key: output

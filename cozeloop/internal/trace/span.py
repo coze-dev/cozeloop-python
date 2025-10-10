@@ -204,7 +204,7 @@ class Span(span.Span, SpanContext, ABC):
         ) for part in message.parts]) for message in src.messages]
 
         result.tools = src.tools
-        result.model_tool_choice = src.model_tool_choice
+        result.tool_choice = src.tool_choice
         return result
 
     def get_model_input_bytes_size(self, m_content):
