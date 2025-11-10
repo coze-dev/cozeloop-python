@@ -1,3 +1,8 @@
+## [0.1.19] - 2025-11-10
+### Fixed
+- fix baggage escape problem
+- enhance input tool_calls obtain
+
 ## [0.1.18] - 2025-10-10
 ### Added
 - fix prompt syntax error, use Union instead of |

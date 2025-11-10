@@ -7,6 +7,7 @@ The CozeLoop SDK is a Python client for interacting with [CozeLoop platform](htt
 Key features:
 - Report trace
 - Get and format prompt
+- Execute Prompt as a Service (PTaaS)
 
 ## Requirements
 - Python 3.8 or higher

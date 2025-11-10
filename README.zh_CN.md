@@ -7,6 +7,7 @@ CozeLoop SDK 是一个用于与 [CozeLoop 平台](https://loop.coze.cn) 进行�
 主要功能：
 - Trace上报
 - Prompt拉取
+- 执行Prompt as a Service (PTaaS)
 
 ## 要求
 - Python 3.8 或更高版本

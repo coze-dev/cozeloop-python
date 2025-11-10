@@ -145,7 +145,7 @@ class TraceProvider:
             tag_truncate_conf=self.tag_truncate_conf,
         )
 
-        span.set_baggage_escape(baggage, False)
+        span.set_baggage(baggage)
         return span
 
     def flush(self):
