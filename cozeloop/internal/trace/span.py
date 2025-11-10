@@ -458,24 +458,16 @@ class Span(span.Span, SpanContext, ABC):
     def set_baggage(self, baggage_item: Dict[str, str]):
         if not baggage_item:
             return
-        self.set_baggage_escape(baggage_item, True)
-
-    def set_baggage_escape(self, baggage_item: Dict[str, str], escape: bool):
-        if not baggage_item:
-            return
         try:
             for key, value in baggage_item.items():
                 if self.is_valid_baggage_item(key, value):
                     self.set_tags({key: value})
-                    if escape:
-                        key = urllib.parse.quote(key)
-                        value = urllib.parse.quote(value)
                     self.set_baggage_item(key, value)
                 else:
                     logger.error(f"[trace] invalid baggageItem:{key}:{value}")
                     pass
         except Exception as e:
-            logger.error(f"Failed to set_baggage_escape: {e}")
+            logger.error(f"Failed to set_baggage: {e}")
 
     def is_valid_baggage_item(self, key: str, value: str) -> bool:
         key_limit = get_tag_key_size_limit()
@@ -565,7 +557,7 @@ class Span(span.Span, SpanContext, ABC):
     def to_header_baggage(self) -> str:
         if not self.baggage:
             return ""
-        return ",".join(f"{k}={v}" for k, v in self.baggage().items() if k and v)
+        return ",".join(f"{urllib.parse.quote(k)}={urllib.parse.quote(v)}" for k, v in self.baggage().items() if k and v)
 
     def to_header_parent(self) -> str:
         return f"{GLOBAL_TRACE_VERSION:02x}-{self.trace_id}-{self.span_id}-{self.flags:02x}"
