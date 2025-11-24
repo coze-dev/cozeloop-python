@@ -12,9 +12,9 @@ from pydantic import Field, BaseModel
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.schema import AgentFinish, AgentAction, LLMResult
 from langchain_core.prompt_values import PromptValue, ChatPromptValue
-from langchain_core.messages import BaseMessage, AIMessageChunk
+from langchain_core.messages import BaseMessage, AIMessageChunk, AIMessage, ToolMessageChunk, ToolMessage
 from langchain_core.prompts import AIMessagePromptTemplate, HumanMessagePromptTemplate, SystemMessagePromptTemplate
-from langchain_core.outputs import ChatGenerationChunk, GenerationChunk
+from langchain_core.outputs import ChatGenerationChunk, GenerationChunk, ChatGeneration
 
 from cozeloop import Span, Client
 from cozeloop._client import get_default_client
@@ -98,20 +98,11 @@ class LoopTraceCallbackHandler(BaseCallbackHandler):
             # set output span_tag
             flow_span.set_tags({'output': ModelTraceOutput(response.generations).to_json()})
         except Exception as e:
-            flow_span.set_error(e)
+            flow_span.set_tags({'error_info': e.__str__()})
         # calculate token usage，and set span_tag
-        if response.llm_output is not None and 'token_usage' in response.llm_output and response.llm_output['token_usage']:
-            self._set_span_tags(flow_span, response.llm_output['token_usage'], need_convert_tag_value=False)
-        else:
-            try:
-                run_info = self.run_map[str(kwargs['run_id'])]
-                if run_info is not None and run_info.model_meta is not None:
-                    model_name = run_info.model_meta.model_name
-                    input_messages = run_info.model_meta.message
-                    flow_span.set_input_tokens(calc_token_usage(input_messages, model_name))
-                    flow_span.set_output_tokens(calc_token_usage(response, model_name))
-            except Exception as e:
-                flow_span.set_error(e)
+        tags = self._get_model_tags(response, **kwargs)
+        if tags:
+            self._set_span_tags(flow_span, tags, need_convert_tag_value=False)
         # finish flow_span
         flow_span.finish()
 
@@ -160,10 +151,13 @@ class LoopTraceCallbackHandler(BaseCallbackHandler):
         flow_span = self._new_flow_span(span_name, 'tool', **kwargs)
         self._set_span_tags(flow_span, span_tags)
 
-    def on_tool_end(self, output: str, **kwargs: Any) -> Any:
+    def on_tool_end(self, output: Any, **kwargs: Any) -> Any:
         flow_span = self._get_flow_span(**kwargs)
         try:
             flow_span.set_tags({'output': _convert_2_json(output)})
+            tool_call_id = self._get_tool_call_id_from_tool_output(output)
+            if tool_call_id:
+                flow_span.set_tags({'tool_call_id': tool_call_id})
         except Exception as e:
             flow_span.set_error(e)
         flow_span.finish()
@@ -187,6 +181,63 @@ class LoopTraceCallbackHandler(BaseCallbackHandler):
 
     def on_agent_finish(self, finish: AgentFinish, **kwargs: Any) -> Any:
         return
+
+    def _get_tool_call_id_from_tool_output(self, tool_message: Any) -> str:
+        if isinstance(tool_message, (ToolMessageChunk, ToolMessage)):
+            return tool_message.tool_call_id
+        return ""
+
+    def _get_model_tags(self, response: LLMResult, **kwargs: Any) -> Dict[str, Any]:
+        return self._get_model_token_tags(response, **kwargs)
+
+    def _get_model_token_tags(self, response: LLMResult, **kwargs: Any) -> Dict[str, Any]:
+        result = {}
+        is_get_from_langchain = False
+        if response.llm_output is not None and 'token_usage' in response.llm_output and response.llm_output['token_usage']:
+            is_get_from_langchain = True
+            result['input_tokens'] = response.llm_output.get('token_usage', {}).get('prompt_tokens', 0)
+            result['output_tokens'] = response.llm_output.get('token_usage', {}).get('completion_tokens', 0)
+            result['tokens'] = result['input_tokens'] + result['output_tokens']
+            reasoning_tokens = response.llm_output.get('token_usage', {}).get('completion_tokens_details', {}).get('reasoning_tokens', 0)
+            if reasoning_tokens:
+                result['reasoning_tokens'] = reasoning_tokens
+            input_cached_tokens = response.llm_output.get('token_usage', {}).get('prompt_tokens_details', {}).get('cached_tokens', 0)
+            if input_cached_tokens:
+                result['input_cached_tokens'] = input_cached_tokens
+        elif response.generations is not None and len(response.generations) > 0 and response.generations[0] is not None\
+                and isinstance(response.generations[0], ChatGeneration) and isinstance(response.generations[0].message, (AIMessageChunk, AIMessage))\
+                and hasattr(response.generations[0].message, 'usage_metadata'):
+            is_get_from_langchain = True
+            result['input_tokens'] = response.generations[0].message.usage_metadata.get('input_tokens', 0)
+            result['output_tokens'] = response.generations[0].message.usage_metadata.get('output_tokens', 0)
+            result['tokens'] = result['input_tokens'] + result['output_tokens']
+            reasoning_tokens = response.generations[0].message.usage_metadata.get('output_token_details', {}).get('reasoning', 0)
+            if reasoning_tokens:
+                result['reasoning_tokens'] = reasoning_tokens
+            input_read_cached_tokens = response.generations[0].message.usage_metadata.get('input_token_details', {}).get('cache_read', 0)
+            if input_read_cached_tokens:
+                result['input_cached_tokens'] = input_read_cached_tokens
+            input_creation_cached_tokens = response.generations[0].message.usage_metadata.get('input_token_details', {}).get('cache_creation', 0)
+            if input_creation_cached_tokens:
+                result['input_creation_cached_tokens'] = input_creation_cached_tokens
+        if is_get_from_langchain:
+            return result
+        else:
+            try:
+                run_info = self.run_map[str(kwargs['run_id'])]
+                if run_info is not None and run_info.model_meta is not None:
+                    model_name = run_info.model_meta.model_name
+                    input_messages = run_info.model_meta.message
+                    token_usage = {
+                        'input_tokens': calc_token_usage(input_messages, model_name),
+                        'output_tokens': calc_token_usage(response, model_name),
+                        'tokens': 0
+                    }
+                    token_usage['tokens'] = token_usage['input_tokens'] + token_usage['output_tokens']
+                    return token_usage
+            except Exception as e:
+                span_tags = {'error_info': repr(e), 'error_trace': traceback.format_exc()}
+                return span_tags
 
     def _on_prompt_start(self, flow_span, serialized: Dict[str, Any], inputs: (Dict[str, Any], str), **kwargs: Any) -> None:
         # get inputs
