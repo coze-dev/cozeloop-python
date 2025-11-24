@@ -9,8 +9,9 @@ from typing import List, Dict, Union, Any, Optional
 
 import pydantic
 from pydantic import Field, BaseModel
-from langchain.callbacks.base import BaseCallbackHandler
-from langchain.schema import AgentFinish, AgentAction, LLMResult
+from langchain_core.callbacks.base import BaseCallbackHandler
+from langchain_core.outputs import LLMResult
+from langchain_core.agents import AgentFinish, AgentAction
 from langchain_core.prompt_values import PromptValue, ChatPromptValue
 from langchain_core.messages import BaseMessage, AIMessageChunk
 from langchain_core.prompts import AIMessagePromptTemplate, HumanMessagePromptTemplate, SystemMessagePromptTemplate
