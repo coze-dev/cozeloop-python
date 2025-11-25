@@ -1,3 +1,8 @@
+## [0.1.20] - 2025-11-10
+### Added
+- langchain callback support langchain V1
+- langchain callback support set tag and name
+
 ## [0.1.19] - 2025-11-10
 ### Fixed
 - fix baggage escape problem
