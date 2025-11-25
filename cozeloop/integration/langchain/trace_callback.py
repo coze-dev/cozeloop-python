@@ -12,7 +12,7 @@ from pydantic import Field, BaseModel
 from langchain.callbacks.base import BaseCallbackHandler
 from langchain.schema import AgentFinish, AgentAction, LLMResult
 from langchain_core.prompt_values import PromptValue, ChatPromptValue
-from langchain_core.messages import BaseMessage, AIMessageChunk
+from langchain_core.messages import BaseMessage, AIMessageChunk, AIMessage
 from langchain_core.prompts import AIMessagePromptTemplate, HumanMessagePromptTemplate, SystemMessagePromptTemplate
 from langchain_core.outputs import ChatGenerationChunk, GenerationChunk
 
@@ -416,7 +416,7 @@ def _convert_inputs(inputs: Any) -> Any:
         for each in inputs:
             format_inputs.append(_convert_inputs(each))
         return format_inputs
-    if isinstance(inputs, AIMessageChunk):
+    if isinstance(inputs, (AIMessageChunk, AIMessage)):
         """
         Must be before BaseMessage.
         """

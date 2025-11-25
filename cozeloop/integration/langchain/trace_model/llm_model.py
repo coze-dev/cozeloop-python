@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 import json
+import logging
 import time
 from typing import List, Optional, Union, Dict, Any
 from pydantic.dataclasses import dataclass
@@ -208,6 +209,13 @@ def convert_tool_calls_by_raw(tool_calls: list) -> List[ToolCall]:
 def convert_tool_calls_by_additional_kwargs(tool_calls: list) -> List[ToolCall]:
     format_tool_calls: List[ToolCall] = []
     for tool_call in tool_calls:
-        function = ToolFunction(name=tool_call.get('function', {}).get('name', ''), arguments=json.loads(tool_call.get('function', {}).get('arguments', '{}')))
+        raw_args = tool_call.get('function', {}).get('arguments', '{}')
+        final_args = None
+        try:
+            final_args = json.loads(raw_args)
+        except Exception as e:
+            final_args = raw_args
+            logging.error(f"convert_tool_calls_by_additional_kwargs failed, error: {e}, tool_call.function.arguments: {raw_args}")
+        function = ToolFunction(name=tool_call.get('function', {}).get('name', ''), arguments=final_args)
         format_tool_calls.append(ToolCall(id=tool_call.get('id', ''), type=tool_call.get('type', ''), function=function))
     return format_tool_calls
