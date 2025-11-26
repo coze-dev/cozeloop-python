@@ -5,7 +5,7 @@ from __future__ import annotations
 import json
 import time
 import traceback
-from typing import List, Dict, Union, Any, Optional
+from typing import List, Dict, Union, Any, Optional, Callable, Protocol
 
 import pydantic
 from pydantic import Field, BaseModel
@@ -29,9 +29,16 @@ _trace_callback_client: Optional[Client] = None
 
 class LoopTracer:
     @classmethod
-    def get_callback_handler(cls, client: Client = None):
+    def get_callback_handler(
+            cls,
+            client: Client = None,
+            modify_name_fn: Optional[Callable[[str], str]] = None,
+            add_tags_fn: Optional[Callable[[str], Dict[str, Any]]] = None,
+    ):
         """
         Do not hold it for a long time, get a new callback_handler for each request.
+        modify_name_fn: modify name function, input is node name(if you use langgraph, like add_node(node_name, node_func), it is node name), output is span name.
+        add_tags_fn:    add tags function, input is node name(if you use langgraph, like add_node(node_name, node_func), it is node name), output is tags dict.
         """
         global _trace_callback_client
         if client:
@@ -39,14 +46,20 @@ class LoopTracer:
         else:
             _trace_callback_client = get_default_client()
 
-        return LoopTraceCallbackHandler()
+        return LoopTraceCallbackHandler(modify_name_fn, add_tags_fn)
 
 
 class LoopTraceCallbackHandler(BaseCallbackHandler):
-    def __init__(self):
+    def __init__(
+            self,
+            name_fn: Optional[Callable[[str], str]] = None,
+            tags_fn: Optional[Callable[[str], Dict[str, Any]]] = None,
+    ):
         super().__init__()
         self._space_id = _trace_callback_client.workspace_id
         self.run_map: Dict[str, Run] = {}
+        self.name_fn = name_fn
+        self.tags_fn = tags_fn
 
     def on_llm_start(self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any) -> Any:
         span_tags = {}
@@ -234,18 +247,28 @@ class LoopTraceCallbackHandler(BaseCallbackHandler):
             flow_span.set_tags({'prompt_version': kwargs['metadata']['lc_hub_commit_hash']})
             flow_span.set_tags({'prompt_provider': 'langsmith'})
 
-    def _new_flow_span(self, span_name: str, span_type: str, **kwargs: Any) -> Span:
+    def _new_flow_span(self, node_name: str, span_type: str, **kwargs: Any) -> Span:
         span_type = _span_type_mapping(span_type)
+        span_name = node_name
         # set parent span
         parent_span: Span = None
         if 'parent_run_id' in kwargs and kwargs['parent_run_id'] is not None and str(kwargs['parent_run_id']) in self.run_map:
             parent_span = self.run_map[str(kwargs['parent_run_id'])].span
         # new span
+        if self.name_fn:
+            name = self.name_fn(node_name)
+            if name:
+                span_name = name
         flow_span = _trace_callback_client.start_span(span_name, span_type, child_of=parent_span)
         run_id = str(kwargs['run_id'])
         self.run_map[run_id] = Run(run_id, flow_span, span_type)
         # set default tags
         flow_span.set_runtime(RuntimeInfo())
+        # set extra tags
+        if self.tags_fn:
+            tags = self.tags_fn(node_name)
+            if isinstance(tags, dict):
+                flow_span.set_tags(tags)
         return flow_span
 
     def _get_flow_span(self, **kwargs: Any) -> Span:
