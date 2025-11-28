@@ -199,36 +199,42 @@ class LoopTraceCallbackHandler(BaseCallbackHandler):
     def _get_model_token_tags(self, response: LLMResult, **kwargs: Any) -> Dict[str, Any]:
         result = {}
         is_get_from_langchain = False
-        if response.llm_output is not None and 'token_usage' in response.llm_output and response.llm_output['token_usage']:
+        if response.llm_output is not None and 'token_usage' in response.llm_output and response.llm_output[
+            'token_usage']:
             is_get_from_langchain = True
             result['input_tokens'] = response.llm_output.get('token_usage', {}).get('prompt_tokens', 0)
             result['output_tokens'] = response.llm_output.get('token_usage', {}).get('completion_tokens', 0)
             result['tokens'] = result['input_tokens'] + result['output_tokens']
-            reasoning_tokens = response.llm_output.get('token_usage', {}).get('completion_tokens_details', {}).get('reasoning_tokens', 0)
+            reasoning_tokens = response.llm_output.get('token_usage', {}).get('completion_tokens_details', {}).get(
+                'reasoning_tokens', 0)
             if reasoning_tokens:
                 result['reasoning_tokens'] = reasoning_tokens
-            input_cached_tokens = response.llm_output.get('token_usage', {}).get('prompt_tokens_details', {}).get('cached_tokens', 0)
+            input_cached_tokens = response.llm_output.get('token_usage', {}).get('prompt_tokens_details', {}).get(
+                'cached_tokens', 0)
             if input_cached_tokens:
                 result['input_cached_tokens'] = input_cached_tokens
-        elif response.generations is not None and len(response.generations) > 0 and response.generations[0] is not None\
-                and isinstance(response.generations[0], ChatGeneration) and isinstance(response.generations[0].message, (AIMessageChunk, AIMessage))\
-                and hasattr(response.generations[0].message, 'usage_metadata'):
-            is_get_from_langchain = True
-            result['input_tokens'] = response.generations[0].message.usage_metadata.get('input_tokens', 0)
-            result['output_tokens'] = response.generations[0].message.usage_metadata.get('output_tokens', 0)
-            result['tokens'] = result['input_tokens'] + result['output_tokens']
-            reasoning_tokens = response.generations[0].message.usage_metadata.get('output_token_details', {}).get('reasoning', 0)
-            if reasoning_tokens:
-                result['reasoning_tokens'] = reasoning_tokens
-            input_read_cached_tokens = response.generations[0].message.usage_metadata.get('input_token_details', {}).get('cache_read', 0)
-            if input_read_cached_tokens:
-                result['input_cached_tokens'] = input_read_cached_tokens
-            input_creation_cached_tokens = response.generations[0].message.usage_metadata.get('input_token_details', {}).get('cache_creation', 0)
-            if input_creation_cached_tokens:
-                result['input_creation_cached_tokens'] = input_creation_cached_tokens
+        elif response.generations is not None and len(response.generations) > 0 and response.generations[0] is not None:
+            for i, generation in enumerate(response.generations[0]):
+                if isinstance(generation, ChatGeneration) and isinstance(generation.message,(AIMessageChunk, AIMessage)):
+                    is_get_from_langchain = True
+                    result['input_tokens'] = generation.message.usage_metadata.get('input_tokens', 0)
+                    result['output_tokens'] = generation.message.usage_metadata.get('output_tokens', 0)
+                    result['tokens'] = result['input_tokens'] + result['output_tokens']
+                    reasoning_tokens = generation.message.usage_metadata.get('output_token_details', {}).get(
+                        'reasoning', 0)
+                    if reasoning_tokens:
+                        result['reasoning_tokens'] = reasoning_tokens
+                    input_read_cached_tokens = generation.message.usage_metadata.get('input_token_details', {}).get(
+                        'cache_read', 0)
+                    if input_read_cached_tokens:
+                        result['input_cached_tokens'] = input_read_cached_tokens
+                    input_creation_cached_tokens = generation.message.usage_metadata.get('input_token_details', {}).get(
+                        'cache_creation', 0)
+                    if input_creation_cached_tokens:
+                        result['input_creation_cached_tokens'] = input_creation_cached_tokens
         if is_get_from_langchain:
             return result
-        else:  # calculate tokens by input messages and output
+        else:
             try:
                 run_info = self.run_map[str(kwargs['run_id'])]
                 if run_info is not None and run_info.model_meta is not None:
