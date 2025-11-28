@@ -303,21 +303,31 @@ class LoopTraceCallbackHandler(BaseCallbackHandler):
         parent_span: Span = None
         if 'parent_run_id' in kwargs and kwargs['parent_run_id'] is not None and str(kwargs['parent_run_id']) in self.run_map:
             parent_span = self.run_map[str(kwargs['parent_run_id'])].span
+        # modify name
+        error_tag = {}
+        try:
+            if self.name_fn:
+                name = self.name_fn(node_name)
+                if name:
+                    span_name = name
+        except Exception as e:
+            error_tag = {'error_info': f'name_fn error {repr(e)}', 'error_trace': traceback.format_exc()}
         # new span
-        if self.name_fn:
-            name = self.name_fn(node_name)
-            if name:
-                span_name = name
         flow_span = _trace_callback_client.start_span(span_name, span_type, child_of=parent_span)
         run_id = str(kwargs['run_id'])
         self.run_map[run_id] = Run(run_id, flow_span, span_type)
         # set default tags
         flow_span.set_runtime(RuntimeInfo())
         # set extra tags
-        if self.tags_fn:
-            tags = self.tags_fn(node_name)
-            if isinstance(tags, dict):
-                flow_span.set_tags(tags)
+        try:
+            if self.tags_fn:
+                tags = self.tags_fn(node_name)
+                if isinstance(tags, dict):
+                    flow_span.set_tags(tags)
+        except Exception as e:
+            error_tag = {'error_info': f'tags_fn error {repr(e)}', 'error_trace': traceback.format_exc()}
+        if error_tag:
+            flow_span.set_tags(error_tag)
         return flow_span
 
     def _get_flow_span(self, **kwargs: Any) -> Span:
