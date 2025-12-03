@@ -34,6 +34,7 @@ class LoopTracer:
             client: Client = None,
             modify_name_fn: Optional[Callable[[str], str]] = None,
             add_tags_fn: Optional[Callable[[str], Dict[str, Any]]] = None,
+            tags: Dict[str, Any] = None,
     ):
         """
         Do not hold it for a long time, get a new callback_handler for each request.
@@ -46,7 +47,7 @@ class LoopTracer:
         else:
             _trace_callback_client = get_default_client()
 
-        return LoopTraceCallbackHandler(modify_name_fn, add_tags_fn)
+        return LoopTraceCallbackHandler(modify_name_fn, add_tags_fn, tags)
 
 
 class LoopTraceCallbackHandler(BaseCallbackHandler):
@@ -54,12 +55,14 @@ class LoopTraceCallbackHandler(BaseCallbackHandler):
             self,
             name_fn: Optional[Callable[[str], str]] = None,
             tags_fn: Optional[Callable[[str], Dict[str, Any]]] = None,
+            tags: Dict[str, Any] = None,
     ):
         super().__init__()
         self._space_id = _trace_callback_client.workspace_id
         self.run_map: Dict[str, Run] = {}
         self.name_fn = name_fn
         self.tags_fn = tags_fn
+        self._tags = tags if tags else {}
 
     def on_llm_start(self, serialized: Dict[str, Any], prompts: List[str], **kwargs: Any) -> Any:
         span_tags = {}
@@ -111,14 +114,14 @@ class LoopTraceCallbackHandler(BaseCallbackHandler):
         try:
             # set output span_tag
             flow_span.set_tags({'output': ModelTraceOutput(response.generations).to_json()})
+            # set model tags
+            tags = self._get_model_tags(response, **kwargs)
+            if tags:
+                self._set_span_tags(flow_span, tags, need_convert_tag_value=False)
         except Exception as e:
             flow_span.set_error(e)
-        # set model tags
-        tags = self._get_model_tags(response, **kwargs)
-        if tags:
-            self._set_span_tags(flow_span, tags, need_convert_tag_value=False)
         # finish flow_span
-        flow_span.finish()
+        self._end_flow_span(flow_span)
 
     def on_chain_start(self, serialized: Dict[str, Any], inputs: Dict[str, Any], **kwargs: Any) -> Any:
         flow_span = None
@@ -146,7 +149,7 @@ class LoopTraceCallbackHandler(BaseCallbackHandler):
                 flow_span.set_tags({'output': _convert_2_json(outputs)})
         except Exception as e:
             flow_span.set_error(e)
-        flow_span.finish()
+        self._end_flow_span(flow_span)
 
     def on_chain_error(self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any) -> Any:
         flow_span = self._get_flow_span(**kwargs)
@@ -155,7 +158,7 @@ class LoopTraceCallbackHandler(BaseCallbackHandler):
             flow_span = self._new_flow_span(span_name, 'chain_error', **kwargs)
         flow_span.set_error(error)
         flow_span.set_tags({'error_trace': traceback.format_exc()})
-        flow_span.finish()
+        self._end_flow_span(flow_span)
 
     def on_tool_start(
             self, serialized: Dict[str, Any], input_str: str, **kwargs: Any
@@ -171,7 +174,7 @@ class LoopTraceCallbackHandler(BaseCallbackHandler):
             flow_span.set_tags({'output': _convert_2_json(output)})
         except Exception as e:
             flow_span.set_error(e)
-        flow_span.finish()
+        self._end_flow_span(flow_span)
 
     def on_tool_error(
             self, error: Union[Exception, KeyboardInterrupt], **kwargs: Any
@@ -182,7 +185,7 @@ class LoopTraceCallbackHandler(BaseCallbackHandler):
             flow_span = self._new_flow_span(span_name, 'tool_error', **kwargs)
         flow_span.set_error(error)
         flow_span.set_tags({'error_trace': traceback.format_exc()})
-        flow_span.finish()
+        self._end_flow_span(flow_span)
 
     def on_text(self, text: str, **kwargs: Any) -> Any:
         """Run on arbitrary text."""
@@ -192,6 +195,10 @@ class LoopTraceCallbackHandler(BaseCallbackHandler):
 
     def on_agent_finish(self, finish: AgentFinish, **kwargs: Any) -> Any:
         return
+
+    def _end_flow_span(self, span: Span):
+        span.set_tags(self._tags)
+        span.finish()
 
     def _get_model_tags(self, response: LLMResult, **kwargs: Any) -> Dict[str, Any]:
         return self._get_model_token_tags(response, **kwargs)
@@ -215,23 +222,22 @@ class LoopTraceCallbackHandler(BaseCallbackHandler):
                 result['input_cached_tokens'] = input_cached_tokens
         elif response.generations is not None and len(response.generations) > 0 and response.generations[0] is not None:
             for i, generation in enumerate(response.generations[0]):
-                if isinstance(generation, ChatGeneration) and isinstance(generation.message,(AIMessageChunk, AIMessage)):
+                if isinstance(generation, ChatGeneration) and isinstance(generation.message,(AIMessageChunk, AIMessage)) and generation.message.usage_metadata:
                     is_get_from_langchain = True
                     result['input_tokens'] = generation.message.usage_metadata.get('input_tokens', 0)
                     result['output_tokens'] = generation.message.usage_metadata.get('output_tokens', 0)
                     result['tokens'] = result['input_tokens'] + result['output_tokens']
-                    reasoning_tokens = generation.message.usage_metadata.get('output_token_details', {}).get(
-                        'reasoning', 0)
-                    if reasoning_tokens:
-                        result['reasoning_tokens'] = reasoning_tokens
-                    input_read_cached_tokens = generation.message.usage_metadata.get('input_token_details', {}).get(
-                        'cache_read', 0)
-                    if input_read_cached_tokens:
-                        result['input_cached_tokens'] = input_read_cached_tokens
-                    input_creation_cached_tokens = generation.message.usage_metadata.get('input_token_details', {}).get(
-                        'cache_creation', 0)
-                    if input_creation_cached_tokens:
-                        result['input_creation_cached_tokens'] = input_creation_cached_tokens
+                    if generation.message.usage_metadata.get('output_token_details', {}):
+                        reasoning_tokens = generation.message.usage_metadata.get('output_token_details', {}).get('reasoning', 0)
+                        if reasoning_tokens:
+                            result['reasoning_tokens'] = reasoning_tokens
+                    if generation.message.usage_metadata.get('input_token_details', {}):
+                        input_read_cached_tokens = generation.message.usage_metadata.get('input_token_details', {}).get('cache_read', 0)
+                        if input_read_cached_tokens:
+                            result['input_cached_tokens'] = input_read_cached_tokens
+                        input_creation_cached_tokens = generation.message.usage_metadata.get('input_token_details', {}).get('cache_creation', 0)
+                        if input_creation_cached_tokens:
+                            result['input_creation_cached_tokens'] = input_creation_cached_tokens
         if is_get_from_langchain:
             return result
         else:
