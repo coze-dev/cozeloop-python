@@ -127,10 +127,13 @@ class LoopTraceCallbackHandler(BaseCallbackHandler):
         flow_span = None
         try:
             if kwargs.get('run_type', '') == 'prompt' or kwargs.get('name', '') == 'ChatPromptTemplate':
-                flow_span = self._new_flow_span(kwargs['name'], kwargs['name'], **kwargs)
+                flow_span = self._new_flow_span(kwargs['name'], 'prompt', **kwargs)
                 self._on_prompt_start(flow_span, serialized, inputs, **kwargs)
             else:
-                flow_span = self._new_flow_span(kwargs['name'], kwargs['name'], **kwargs)
+                span_type = 'chain'
+                if kwargs['name'] == 'LangGraph':  # LangGraph is agent span_type，for trajectory evaluation aggregate to an agent
+                    span_type = 'agent'
+                flow_span = self._new_flow_span(kwargs['name'], span_type, **kwargs)
                 flow_span.set_tags({'input': _convert_2_json(inputs)})
         except Exception as e:
             if flow_span is not None:
@@ -505,7 +508,7 @@ def _convert_inputs(inputs: Any) -> Any:
         for each in inputs:
             format_inputs.append(_convert_inputs(each))
         return format_inputs
-    if isinstance(inputs, AIMessageChunk):
+    if isinstance(inputs, (AIMessageChunk, AIMessage)):
         """
         Must be before BaseMessage.
         """
