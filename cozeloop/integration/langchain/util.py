@@ -3,8 +3,7 @@
 
 import tiktoken
 from typing import List, Dict, Union, Any, Optional
-from langchain.schema import LLMResult
-from langchain_core.outputs import Generation, ChatGeneration
+from langchain_core.outputs import LLMResult, Generation, ChatGeneration
 
 
 def calc_token_usage(inputs: Union[List[Dict], LLMResult], model: str = 'gpt-3.5-turbo-0613'):

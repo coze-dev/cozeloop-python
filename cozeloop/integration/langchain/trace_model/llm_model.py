@@ -9,6 +9,8 @@ from pydantic.dataclasses import dataclass
 from langchain_core.messages import BaseMessage, ToolMessage, AIMessageChunk, AIMessage
 from langchain_core.outputs import Generation, ChatGeneration
 
+logger = logging.getLogger(__name__)
+
 
 @dataclass
 class ToolFunction:
@@ -49,6 +51,8 @@ class Message:
     content: Optional[Union[str, List[Union[dict, Parts]], dict]] = None
     parts: Optional[List[Parts]] = None
     tool_calls: List[ToolCall] = None
+    metadata: Optional[dict] = None
+    reasoning_content: Optional[str] = None
 
     def __post_init__(self):
         if self.role is not None and (self.role == 'AIMessageChunk' or self.role == 'ai'):
@@ -127,16 +131,19 @@ class ModelTraceInput:
         tool_call_id_name_map = {}
         for message in process_messages:
             if isinstance(message, (AIMessageChunk, AIMessage)):
-                for tool_call in message.additional_kwargs.get('tool_calls', []):
-                    if tool_call.get('id', ''):
-                        tool_call_id_name_map[tool_call.get('id', '')] = tool_call.get('function', {}).get('name', '')
+                if message.additional_kwargs:
+                    for tool_call in message.additional_kwargs.get('tool_calls', []):
+                        if tool_call and tool_call.get('id', ''):
+                            tool_call_id_name_map[tool_call.get('id', '')] = tool_call.get('function', {}).get('name', '')
                 for tool_call in message.tool_calls:
-                    if tool_call.get('id', ''):
+                    if tool_call and tool_call.get('id', ''):
                         tool_call_id_name_map[tool_call.get('id', '')] = tool_call.get('name', '')
 
         for message in process_messages:
             if isinstance(message, (AIMessageChunk, AIMessage)):
-                tool_calls = convert_tool_calls_by_additional_kwargs(message.additional_kwargs.get('tool_calls', []))
+                tool_calls = []
+                if message.additional_kwargs:
+                    tool_calls = convert_tool_calls_by_additional_kwargs(message.additional_kwargs.get('tool_calls', []))
                 if len(tool_calls) == 0:
                     tool_calls = convert_tool_calls_by_raw(message.tool_calls)
                 self._messages.append(Message(role=message.type, content=message.content, tool_calls=tool_calls))
@@ -144,7 +151,7 @@ class ModelTraceInput:
                 name = ''
                 if tool_call_id_name_map.get(message.tool_call_id, None) is not None:
                     name = tool_call_id_name_map[message.tool_call_id]
-                if message.additional_kwargs.get('name', ''):
+                if message.additional_kwargs is not None and message.additional_kwargs.get('name', ''):
                     name = message.additional_kwargs.get('name', '')
                 tool_call = ToolCall(id=message.tool_call_id, type=message.type, function=ToolFunction(name=name))
                 self._messages.append(Message(role=message.type, content=message.content, tool_calls=[tool_call]))
@@ -152,15 +159,22 @@ class ModelTraceInput:
                 self._messages.append(Message(role=message.type, content=message.content))
 
     def to_json(self):
+        if self._invocation_params is None:
+            return '{}'
         tools: List[Tool] = []
         for tool in self._invocation_params.get('tools', []):
+            if tool.get('function', {}) is None:
+                continue
             function = ToolFunction(name=tool.get('function', {}).get('name', ''),
                                     description=tool.get('function', {}).get('description', ''),
                                     parameters=tool.get('function', {}).get('parameters', {}))
             tools.append(Tool(type=tool.get('type', ''), function=function))
         if len(tools) == 0 and 'functions' in self._invocation_params:
-            for bind_function in self._invocation_params['functions']:
-                function = ToolFunction(name=bind_function.get('function', {}).get('name', ''),
+            for bind_function in self._invocation_params.get('functions', []):
+                name = ''
+                if bind_function.get('function', {}):
+                    name = bind_function.get('function', {}).get('name', '')
+                function = ToolFunction(name=name,
                                         description=bind_function.get('description', ''),
                                         parameters=bind_function.get('parameters', {}))
                 tools.append(Tool(type=bind_function.get('type', ''), function=function))
@@ -181,12 +195,7 @@ class ModelTraceOutput:
         for i, generation in enumerate(self.generations):
             choice: Choice = None
             if isinstance(generation, ChatGeneration):
-                tool_calls = convert_tool_calls_by_additional_kwargs(generation.message.additional_kwargs.get('tool_calls', []))
-                if len(tool_calls) == 0 and 'function_call' in generation.message.additional_kwargs:
-                    function_call = generation.message.additional_kwargs.get('function_call', {})
-                    function = ToolFunction(name=function_call.get('name', ''), arguments=json.loads(function_call.get('arguments', {})))
-                    tool_calls.append(ToolCall(function=function, type='function_call(deprecated)'))
-                message = Message(role=generation.message.type, content=generation.message.content, tool_calls=tool_calls)
+                message = convert_output_message(generation.message)
                 choice = Choice(index=i, message=message, finish_reason=generation.generation_info.get('finish_reason', ''))
             elif isinstance(generation, Generation):
                 choice = Choice(index=i, message=Message(content=generation.text))
@@ -201,6 +210,8 @@ class ModelTraceOutput:
 def convert_tool_calls_by_raw(tool_calls: list) -> List[ToolCall]:
     format_tool_calls: List[ToolCall] = []
     for tool_call in tool_calls:
+        if tool_call is None:
+            continue
         function = ToolFunction(name=tool_call.get('name', ''), arguments=tool_call.get('args', {}))
         format_tool_calls.append(ToolCall(id=tool_call.get('id', ''), type=tool_call.get('type', ''), function=function))
     return format_tool_calls
@@ -209,13 +220,46 @@ def convert_tool_calls_by_raw(tool_calls: list) -> List[ToolCall]:
 def convert_tool_calls_by_additional_kwargs(tool_calls: list) -> List[ToolCall]:
     format_tool_calls: List[ToolCall] = []
     for tool_call in tool_calls:
+        if tool_call is None or tool_call.get('function', {}) is None:
+            continue
         raw_args = tool_call.get('function', {}).get('arguments', '{}')
         final_args = None
         try:
             final_args = json.loads(raw_args)
         except Exception as e:
             final_args = raw_args
-            logging.error(f"convert_tool_calls_by_additional_kwargs failed, error: {e}, tool_call.function.arguments: {raw_args}")
+            logger.error(f"convert_tool_calls_by_additional_kwargs failed, error: {e}, tool_call.function.arguments: {raw_args}")
         function = ToolFunction(name=tool_call.get('function', {}).get('name', ''), arguments=final_args)
         format_tool_calls.append(ToolCall(id=tool_call.get('id', ''), type=tool_call.get('type', ''), function=function))
     return format_tool_calls
+
+
+def convert_output_message(message: BaseMessage) -> Message:
+    if message is None:
+        return None
+    tool_calls = convert_tool_calls_by_additional_kwargs(message.additional_kwargs.get('tool_calls', []))
+    if len(tool_calls) == 0 and isinstance(message, (AIMessage, AIMessageChunk)):
+        tool_calls = convert_tool_calls_by_raw(message.tool_calls)
+    if len(tool_calls) == 0 and 'function_call' in message.additional_kwargs:
+        function_call = message.additional_kwargs.get('function_call', {})
+        try:
+            arg = json.loads(function_call.get('arguments', {}))
+        except Exception as e:
+            logging.error(f"ModelTraceOutput.to_json arguments loads failed, exception: {e}")
+            arg = {}
+        function = ToolFunction(name=function_call.get('name', ''), arguments=arg)
+        tool_calls.append(ToolCall(function=function, type='function_call(deprecated)'))
+    metadata = {}
+    if message.response_metadata is not None:
+        if message.response_metadata.get('id', ''):
+            response_id = message.response_metadata.get('id', '')
+            metadata['id'] = response_id
+    message = Message(
+        role=message.type,
+        content=message.content,
+        tool_calls=tool_calls,
+        metadata=metadata,
+        reasoning_content=message.additional_kwargs.get('reasoning_content', ''),
+    )
+
+    return message
