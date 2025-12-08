@@ -200,7 +200,6 @@ class LoopTraceCallbackHandler(BaseCallbackHandler):
         return
 
     def _end_flow_span(self, span: Span):
-        span.set_tags(self._tags)
         span.finish()
 
     def _get_model_tags(self, response: LLMResult, **kwargs: Any) -> Dict[str, Any]:
@@ -328,8 +327,9 @@ class LoopTraceCallbackHandler(BaseCallbackHandler):
         # set default tags
         flow_span.set_runtime(RuntimeInfo())
         # set extra tags
+        flow_span.set_tags(self._tags) # global tags
         try:
-            if self.tags_fn:
+            if self.tags_fn: # add tags fn
                 tags = self.tags_fn(node_name)
                 if isinstance(tags, dict):
                     flow_span.set_tags(tags)
