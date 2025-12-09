@@ -131,8 +131,8 @@ class LoopTraceCallbackHandler(BaseCallbackHandler):
                 self._on_prompt_start(flow_span, serialized, inputs, **kwargs)
             else:
                 span_type = 'chain'
-                if kwargs['name'] == 'LangGraph':  # LangGraph is agent span_type，for trajectory evaluation aggregate to an agent
-                    span_type = 'agent'
+                if kwargs['name'] == 'LangGraph':  # LangGraph is Graph span_type，for trajectory evaluation aggregate to an agent
+                    span_type = 'graph'
                 flow_span = self._new_flow_span(kwargs['name'], span_type, **kwargs)
                 flow_span.set_tags({'input': _convert_2_json(inputs)})
         except Exception as e:
