@@ -494,10 +494,8 @@ def _convert_2_json(inputs: Any) -> str:
 
 
 def _convert_inputs(inputs: Any) -> Any:
-    if isinstance(inputs, str):
+    if isinstance(inputs, (str, bool, int, float)):
         return inputs
-    if isinstance(inputs, (bool, int, float)):
-        return str(inputs)
     if isinstance(inputs, dict):
         format_inputs = {}
         for key, val in inputs.items():
