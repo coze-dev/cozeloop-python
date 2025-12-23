@@ -1,4 +1,8 @@
-## [0.1.20] - 2025-11-10
+## [0.1.21] - 2025-12-23
+### Added
+- runtime scene support get from env
+
+## [0.1.20] - 2025-12-08
 ### Added
 - langchain callback support langchain V1
 - langchain callback support set tag and name

@@ -324,7 +324,7 @@ class LoopTraceCallbackHandler(BaseCallbackHandler):
         flow_span = _trace_callback_client.start_span(span_name, span_type, child_of=parent_span)
         run_id = str(kwargs['run_id'])
         self.run_map[run_id] = Run(run_id, flow_span, span_type)
-        # set default tags
+        # set runtime
         flow_span.set_runtime(RuntimeInfo())
         # set extra tags
         flow_span.set_tags(self._tags) # global tags
