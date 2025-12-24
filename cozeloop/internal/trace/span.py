@@ -2,6 +2,7 @@
 # SPDX-License-Identifier: MIT
 
 import logging
+import os
 from abc import ABC
 from typing import Dict, Any, List, Optional
 from datetime import datetime
@@ -369,6 +370,9 @@ class Span(span.Span, SpanContext, ABC):
     def set_runtime(self, runtime: Runtime) -> None:
         r = runtime
         r.scene = V_SCENE_CUSTOM
+        scene = os.getenv('COZELOOP_SCENE') # record scene from env
+        if scene:
+            r.scene = scene
         with self.lock:
             if self.system_tag_map is None:
                 self.system_tag_map = {}
