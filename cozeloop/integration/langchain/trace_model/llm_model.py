@@ -72,7 +72,6 @@ class Message:
             else:
                 self.content = self.content.__str__()
         elif isinstance(self.content, dict):
-            is_part = False
             text = self.content.get('text', None)
             url = self.content.get('url', self.content.get('image_url', {}).get('url', None))
             if text is not None or url is not None:
@@ -96,6 +95,7 @@ class Choice:
 
 @dataclass
 class Choices:
+    id: Optional[str] = None
     choices: Optional[List[Choice]] = None
 
 
@@ -103,6 +103,7 @@ class Choices:
 class ModelTraceInputData:
     messages: Optional[List[Message]] = None
     tools: Optional[List[Tool]] = None
+    previous_response_id: Optional[str] = None
 
 
 @dataclass
@@ -178,8 +179,10 @@ class ModelTraceInput:
                                         description=bind_function.get('description', ''),
                                         parameters=bind_function.get('parameters', {}))
                 tools.append(Tool(type=bind_function.get('type', ''), function=function))
+
+        pre_resp_id = self._invocation_params.get('previous_response_id', None)
         return json.dumps(
-            ModelTraceInputData(messages=self._messages, tools=tools),
+            ModelTraceInputData(messages=self._messages, tools=tools, previous_response_id=pre_resp_id),
             default=lambda o: dict((key, value) for key, value in o.__dict__.items() if value),
             sort_keys=False,
             ensure_ascii=False)
@@ -192,19 +195,31 @@ class ModelTraceOutput:
 
     def to_json(self):
         choices: List[Choice] = []
+        response_id = None
         for i, generation in enumerate(self.generations):
             choice: Choice = None
             if isinstance(generation, ChatGeneration):
                 message = convert_output_message(generation.message)
-                choice = Choice(index=i, message=message, finish_reason=generation.generation_info.get('finish_reason', ''))
+                if message and message.metadata:
+                    response_id = message.metadata.get('id', None)
+                choice = Choice(index=i, message=message)
+                if generation.generation_info:
+                    choice.finish_reason = generation.generation_info.get('finish_reason', '')
             elif isinstance(generation, Generation):
                 choice = Choice(index=i, message=Message(content=generation.text))
             choices.append(choice)
-        return json.dumps(
-            Choices(choices=choices),
-            default=lambda o: dict((key, value) for key, value in o.__dict__.items() if value or key=='index'),
-            sort_keys=False,
-            ensure_ascii=False)
+        res = ''
+        try:
+            res = json.dumps(
+                Choices(id=response_id, choices=choices),
+                default=lambda o: dict((key, value) for key, value in o.__dict__.items() if value or key == 'index'),
+                sort_keys=False,
+                ensure_ascii=False)
+        except Exception as e:
+            logging.error(f"ModelTraceOutput.to_json failed, exception: {e}, choices: {choices}")
+            raise e
+        finally:
+            return res
 
 
 def convert_tool_calls_by_raw(tool_calls: list) -> List[ToolCall]:
