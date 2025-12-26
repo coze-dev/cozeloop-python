@@ -7,18 +7,25 @@ from typing import Optional, Any
 
 from cozeloop.spec import tracespec
 
+LANGCHAIN_VERSION = ''
+LANGCHAIN_CORE_VERSION = ''
+try:
+    LANGCHAIN_VERSION = metadata.version('langchain')
+except metadata.PackageNotFoundError:
+    LANGCHAIN_VERSION = ''
+try:
+    LANGCHAIN_CORE_VERSION = metadata.version('langchain-core')
+except metadata.PackageNotFoundError:
+    LANGCHAIN_CORE_VERSION = ''
+
 
 class RuntimeInfo(tracespec.Runtime):
     language: Optional[str] = tracespec.V_LANG_PYTHON
     library: Optional[str] = tracespec.V_LIB_LANGCHAIN
 
     def model_post_init(self, context: Any) -> None:
-        try:
-            langchain_version = metadata.version('langchain')
-        except metadata.PackageNotFoundError:
-            langchain_version = ''
-
-        self.library_version = langchain_version
+        self.library_version = LANGCHAIN_VERSION
+        self.extra = {'langchain_core_version': LANGCHAIN_CORE_VERSION}
 
     def to_json(self):
         return json.dumps(

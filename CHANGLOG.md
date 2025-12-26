@@ -1,3 +1,9 @@
+## [0.1.22] - 2026-01-05
+### Added
+- lcc support child_of and state_span_ctx_key
+- lcc support multi clients
+- llc support get trace_id and root_span_id
+
 ## [0.1.21] - 2025-12-23
 ### Added
 - runtime scene support get from env
