@@ -101,7 +101,8 @@ class CozeLoopDecorator:
                     span.set_tags(tags)
                     span.finish()
 
-                    return res
+                    if res is not None:
+                        return res
 
             @wraps(func)
             async def async_wrapper(*args: Any, **kwargs: Any):
@@ -139,7 +140,8 @@ class CozeLoopDecorator:
                     span.set_tags(tags)
                     span.finish()
 
-                    return res
+                    if res is not None:
+                        return res
 
             @wraps(func)
             def gen_wrapper(*args: Any, **kwargs: Any):
@@ -247,7 +249,7 @@ class CozeLoopDecorator:
                     span.set_input(input)
                     span.set_tags(tags)
 
-                    if not hasattr(res, "__iter__"):
+                    if not hasattr(res, "__iter__") and res is not None:
                         return res
 
             @wraps(func)
@@ -286,7 +288,7 @@ class CozeLoopDecorator:
                     span.set_input(input)
                     span.set_tags(tags)
 
-                    if not hasattr(res, "__aiter__"):
+                    if not hasattr(res, "__aiter__") and res is not None:
                         return res
 
             if is_async_gen_func(func):
@@ -421,7 +423,7 @@ class _CozeLoopAsyncTraceStream(Generic[S]):
             await self._aend()
             raise
         except Exception as e:
-            await self._aend()
+            await self._aend(e)
             raise e
         else:
             await self._aend()
