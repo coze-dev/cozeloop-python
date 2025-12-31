@@ -368,3 +368,116 @@ class TestCozeLoopDecoratorNormalOutputs:
         assert result == [1, 2, 3]
         assert span.output == '[2, 4, 6]'
         assert span.finished is True
+
+
+class TestCozeLoopDecoratorExceptionHandling:
+    """测试 CozeLoopDecorator 是否正确处理并重新抛出异常，而不是将其掩盖"""
+
+    def test_sync_func_exception(self, monkeypatch):
+        span = SpanMock()
+        monkeypatch.setattr(decorator_module, "start_span", lambda *args, **kwargs: span)
+
+        @decorator_module.CozeLoopDecorator().observe()
+        def risky_func():
+            raise ValueError("Sync error")
+
+        with pytest.raises(ValueError, match="Sync error"):
+            risky_func()
+
+        assert span.error == "Sync error"
+        assert span.finished is True
+
+    def test_async_func_exception(self, monkeypatch):
+        span = SpanMock()
+        monkeypatch.setattr(decorator_module, "start_span", lambda *args, **kwargs: span)
+
+        @decorator_module.CozeLoopDecorator().observe()
+        async def risky_async_func():
+            raise ValueError("Async error")
+
+        with pytest.raises(ValueError, match="Async error"):
+            asyncio.run(risky_async_func())
+
+        assert span.error == "Async error"
+        assert span.finished is True
+
+    def test_generator_func_exception(self, monkeypatch):
+        span = SpanMock()
+        monkeypatch.setattr(decorator_module, "start_span", lambda *args, **kwargs: span)
+
+        @decorator_module.CozeLoopDecorator().observe()
+        def risky_gen():
+            yield 1
+            raise ValueError("Gen error")
+
+        gen = risky_gen()
+        assert next(gen) == 1
+        with pytest.raises(ValueError, match="Gen error"):
+            next(gen)
+
+        assert span.error == "Gen error"
+        assert span.finished is True
+
+    def test_async_generator_func_exception(self, monkeypatch):
+        span = SpanMock()
+        monkeypatch.setattr(decorator_module, "start_span", lambda *args, **kwargs: span)
+
+        @decorator_module.CozeLoopDecorator().observe()
+        async def risky_agen():
+            yield 1
+            raise ValueError("Async gen error")
+
+        async def collect():
+            agen = risky_agen()
+            assert (await agen.__anext__()) == 1
+            with pytest.raises(ValueError, match="Async gen error"):
+                await agen.__anext__()
+
+        asyncio.run(collect())
+
+        assert span.error == "Async gen error"
+        assert span.finished is True
+
+    def test_sync_stream_wrapper_exception(self, monkeypatch):
+        span = SpanMock()
+        monkeypatch.setattr(decorator_module, "start_span", lambda *args, **kwargs: span)
+
+        def risky_iter_func():
+            class RiskyIter:
+                def __iter__(self):
+                    return self
+                def __next__(self):
+                    raise ValueError("Stream error")
+            return RiskyIter()
+
+        decorated = decorator_module.CozeLoopDecorator().observe(process_iterator_outputs=lambda x: x)(risky_iter_func)
+        stream = decorated()
+        with pytest.raises(ValueError, match="Stream error"):
+            list(stream)
+
+        assert span.error == "Stream error"
+        assert span.finished is True
+
+    def test_async_stream_wrapper_exception(self, monkeypatch):
+        span = SpanMock()
+        monkeypatch.setattr(decorator_module, "start_span", lambda *args, **kwargs: span)
+
+        async def risky_aiter_func():
+            class RiskyAIter:
+                def __aiter__(self):
+                    return self
+                async def __anext__(self):
+                    raise ValueError("Async stream error")
+            return RiskyAIter()
+
+        async def collect():
+            decorated = decorator_module.CozeLoopDecorator().observe(process_iterator_outputs=lambda x: x)(risky_aiter_func)
+            stream = await decorated()
+            with pytest.raises(ValueError, match="Async stream error"):
+                async for _ in stream:
+                    pass
+
+        asyncio.run(collect())
+
+        assert span.error == "Async stream error"
+        assert span.finished is True
