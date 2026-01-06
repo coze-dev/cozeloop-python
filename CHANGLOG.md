@@ -1,3 +1,7 @@
+## [0.1.22] - 2026-01-06
+### Added
+- support span discard
+
 ## [0.1.21] - 2025-12-23
 ### Added
 - runtime scene support get from env
