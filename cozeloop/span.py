@@ -218,6 +218,12 @@ class Span(CommonSpanSetter, SpanContext):
         Under the hood, it is actually placed in an asynchronous queue waiting to be reported.
         """
 
+    @abstractmethod
+    def discard(self) -> None:
+        """
+        The span will be discarded, not be reported.
+        """
+
     @property
     @abstractmethod
     def start_time(self) -> datetime:

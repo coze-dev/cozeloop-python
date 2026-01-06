@@ -34,6 +34,9 @@ class NoopSpan(Span, ABC):
     def set_baggage(self, baggage_items: Dict[str, str]) -> None:
         pass
 
+    def discard(self) -> None:
+        pass
+
     def finish(self) -> None:
         pass
 
