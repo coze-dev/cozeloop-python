@@ -36,3 +36,4 @@ venv.bak/
 /output
 dist/
 .coda/
+.DS_Store

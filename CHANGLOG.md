@@ -1,3 +1,9 @@
+## [0.1.23] - 2026-01-07
+### Added
+- lcc support child_of and state_span_ctx_key
+- lcc support multi clients
+- llc support get trace_id and root_span_id
+
 ## [0.1.22] - 2026-01-06
 ### Added
 - support span discard
