@@ -490,6 +490,9 @@ class Span(span.Span, SpanContext, ABC):
         with self.lock:
             super().set_baggage_item(restricted_key, value)
 
+    def discard(self) -> None:
+        delete_span_in_context(self.span_id)
+
     def finish(self):
         try:
             if not self.is_do_finish():
