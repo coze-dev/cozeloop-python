@@ -5,6 +5,8 @@ import logging
 import os
 import time
 
+import cozeloop
+
 from cozeloop import new_client
 from cozeloop.logger import set_log_level
 
@@ -105,7 +107,7 @@ def do_simple_demo():
     # Warning! In general, this method is not needed to be call, as spans will be automatically reported in batches.
     # Note that flush will block and wait for the report to complete, and it may cause frequent reporting,
     # affecting performance.
-    client.flush()
+    cozeloop.flush()
 
     # -- close trace, do flush and close client
     # Warning! Once Close is executed, the client will become unavailable and a new client needs

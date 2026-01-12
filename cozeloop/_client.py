@@ -221,6 +221,12 @@ class _LoopClient(Client):
             prompt_trace=prompt_trace
         )
 
+        temp_cli = None
+        with _client_lock:
+            temp_cli = _default_client
+        if temp_cli is None:
+            set_default_client(self)
+
     def _create_default_header_injector(self) -> Callable[[], Dict[str, str]]:
         def default_header_injector() -> Dict[str, str]:
             try:
