@@ -1,3 +1,7 @@
+## [0.1.24] - 2026-01-16
+### Added
+- client init set default client if not exist
+
 ## [0.1.23] - 2026-01-07
 ### Added
 - lcc support child_of and state_span_ctx_key
