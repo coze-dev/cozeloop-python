@@ -4,6 +4,8 @@ import time
 from typing import Optional, Callable, Any, overload, Dict, Generic, Iterator, TypeVar, List, cast, AsyncIterator
 from functools import wraps
 
+from langchain_core.runnables import RunnableLambda, RunnableConfig
+
 from cozeloop import Client, Span, start_span
 from cozeloop.decorator.utils import is_async_func, is_gen_func, is_async_gen_func, is_class_func
 
@@ -305,6 +307,153 @@ class CozeLoopDecorator:
                     return sync_stream_wrapper
                 else:
                     return sync_wrapper
+
+        if func is None:
+            return decorator
+        else:
+            return decorator(func)
+
+
+    def to_runnable(
+            self,
+            func: Callable = None,
+    ) -> Callable:
+        """
+        Decorator to be RunnableLambda.
+
+        :param func: The function to be decorated, Requirements are as follows：
+                     1. When the func is called, parameter config(RunnableConfig) is required, you must use the config containing cozeloop callback handler of 'current request', otherwise, the trace may be lost!
+
+        Examples:
+            @to_runnable
+            def runnable_func(my_input: dict) -> str:
+                return input
+
+            async def scorer_leader(state: MyState) -> dict | str:
+                await runnable_func({"a": "111", "b": 222, "c": "333"}, config=state.config) # config is required
+        """
+
+        def decorator(func: Callable):
+
+            @wraps(func)
+            def sync_wrapper(*args: Any, **kwargs: Any):
+                config = kwargs.pop("config", None)
+                config = _convert_config(config)
+                res = None
+                try:
+                    inp = {
+                        "args": args,
+                        "kwargs": kwargs
+                    }
+                    res = RunnableLambda(_param_wrapped_func).invoke(input=inp, config=config)
+                    if hasattr(res, "__iter__"):
+                        return res
+                except StopIteration:
+                    pass
+                except Exception as e:
+                    raise e
+                finally:
+                    if res is not None:
+                        return res
+
+            @wraps(func)
+            async def async_wrapper(*args: Any, **kwargs: Any):
+                config = kwargs.pop("config", None)
+                config = _convert_config(config)
+                res = None
+                try:
+                    inp = {
+                        "args": args,
+                        "kwargs": kwargs
+                    }
+                    res = await RunnableLambda(_param_wrapped_func_async).ainvoke(input=inp, config=config)
+                    if hasattr(res, "__aiter__"):
+                        return res
+                except StopIteration:
+                    pass
+                except StopAsyncIteration:
+                    pass
+                except Exception as e:
+                    if e.args and e.args[0] == 'coroutine raised StopIteration':  # coroutine StopIteration
+                        pass
+                    else:
+                        raise e
+                finally:
+                    if res is not None:
+                        return res
+
+            @wraps(func)
+            def gen_wrapper(*args: Any, **kwargs: Any):
+                config = kwargs.pop("config", None)
+                config = _convert_config(config)
+                try:
+                    inp = {
+                        "args": args,
+                        "kwargs": kwargs
+                    }
+                    gen = RunnableLambda(_param_wrapped_func).invoke(input=inp, config=config)
+                    try:
+                        for item in gen:
+                            yield item
+                    except StopIteration:
+                        pass
+                except Exception as e:
+                    raise e
+
+            @wraps(func)
+            async def async_gen_wrapper(*args: Any, **kwargs: Any):
+                config = kwargs.pop("config", None)
+                config = _convert_config(config)
+                try:
+                    inp = {
+                        "args": args,
+                        "kwargs": kwargs
+                    }
+                    gen = RunnableLambda(_param_wrapped_func_async).invoke(input=inp, config=config)
+                    items = []
+                    try:
+                        async for item in gen:
+                            items.append(item)
+                            yield item
+                    finally:
+                        pass
+                except StopIteration:
+                    pass
+                except StopAsyncIteration:
+                    pass
+                except Exception as e:
+                    if e.args and e.args[0] == 'coroutine raised StopIteration':
+                        pass
+                    else:
+                        raise e
+
+            # for convert parameter
+            def _param_wrapped_func(input_dict: dict) -> Any:
+                args = input_dict.get("args", ())
+                kwargs = input_dict.get("kwargs", {})
+                return func(*args, **kwargs)
+
+            async def _param_wrapped_func_async(input_dict: dict) -> Any:
+                args = input_dict.get("args", ())
+                kwargs = input_dict.get("kwargs", {})
+                return await func(*args, **kwargs)
+
+            def _convert_config(config: RunnableConfig = None) -> RunnableConfig | None:
+                if config is None:
+                    config = RunnableConfig(run_name=func.__name__)
+                    config['run_name'] = func.__name__
+                elif isinstance(config, dict):
+                    config['run_name'] = func.__name__
+                return config
+
+            if is_async_gen_func(func):
+                return async_gen_wrapper
+            if is_gen_func(func):
+                return gen_wrapper
+            elif is_async_func(func):
+                return async_wrapper
+            else:
+                return sync_wrapper
 
         if func is None:
             return decorator

@@ -1,3 +1,8 @@
+## [0.1.25] - 2026-01-22
+### Added
+- add to_runnable decorator
+- lcc tool message add name and tool_call_id
+
 ## [0.1.24] - 2026-01-16
 ### Added
 - client init set default client if not exist
