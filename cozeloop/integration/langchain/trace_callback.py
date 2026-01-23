@@ -14,7 +14,7 @@ from langchain_core.callbacks.base import BaseCallbackHandler
 from langchain_core.outputs import LLMResult, ChatGeneration
 from langchain_core.agents import AgentFinish, AgentAction
 from langchain_core.prompt_values import PromptValue, ChatPromptValue
-from langchain_core.messages import BaseMessage, AIMessageChunk, AIMessage
+from langchain_core.messages import BaseMessage, AIMessageChunk, AIMessage, ToolMessage
 from langchain_core.prompts import AIMessagePromptTemplate, HumanMessagePromptTemplate, SystemMessagePromptTemplate
 from langchain_core.outputs import ChatGenerationChunk, GenerationChunk
 
@@ -581,6 +581,15 @@ def _convert_inputs(inputs: Any) -> Any:
         if inputs.content != '':
             format_inputs['content'] = inputs.content
         return format_inputs
+    if isinstance(inputs, ToolMessage):
+        """
+        Must be before BaseMessage.
+        """
+        content = {"content": inputs.content}
+        if inputs.artifact is not None:
+            content['artifact'] = _convert_inputs(inputs.artifact) # artifact is existed when response_format="content_and_artifact".
+        message = Message(role=inputs.type, content=content)
+        return message
     if isinstance(inputs, BaseMessage):
         message = Message(role=inputs.type, content=inputs.content,
                           tool_calls=inputs.additional_kwargs.get('tool_calls', []))
