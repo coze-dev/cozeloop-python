@@ -313,7 +313,6 @@ class CozeLoopDecorator:
         else:
             return decorator(func)
 
-
     def to_runnable(
             self,
             func: Callable = None,
@@ -341,11 +340,16 @@ class CozeLoopDecorator:
                 config = _convert_config(config)
                 res = None
                 try:
-                    inp = {
-                        "args": args,
-                        "kwargs": kwargs
-                    }
-                    res = RunnableLambda(_param_wrapped_func).invoke(input=inp, config=config)
+                    extra = {}
+                    if len(args) > 0 and is_class_func(func):
+                        extra = {"_inner_class_self": args[0]}
+                        args = args[1:]
+                    inp = {}
+                    if len(args) > 0:
+                        inp['args'] = args
+                    if len(kwargs) > 0:
+                        inp['kwargs'] = kwargs
+                    res = RunnableLambda(_param_wrapped_func).invoke(input=inp, config=config, **extra)
                     if hasattr(res, "__iter__"):
                         return res
                 except StopIteration:
@@ -362,11 +366,16 @@ class CozeLoopDecorator:
                 config = _convert_config(config)
                 res = None
                 try:
-                    inp = {
-                        "args": args,
-                        "kwargs": kwargs
-                    }
-                    res = await RunnableLambda(_param_wrapped_func_async).ainvoke(input=inp, config=config)
+                    extra = {}
+                    if len(args) > 0 and is_class_func(func):
+                        extra = {"_inner_class_self": args[0]}
+                        args = args[1:]
+                    inp = {}
+                    if len(args) > 0:
+                        inp['args'] = args
+                    if len(kwargs) > 0:
+                        inp['kwargs'] = kwargs
+                    res = await RunnableLambda(_param_wrapped_func_async).ainvoke(input=inp, config=config, **extra)
                     if hasattr(res, "__aiter__"):
                         return res
                 except StopIteration:
@@ -387,11 +396,16 @@ class CozeLoopDecorator:
                 config = kwargs.pop("config", None)
                 config = _convert_config(config)
                 try:
-                    inp = {
-                        "args": args,
-                        "kwargs": kwargs
-                    }
-                    gen = RunnableLambda(_param_wrapped_func).invoke(input=inp, config=config)
+                    extra = {}
+                    if len(args) > 0 and is_class_func(func):
+                        extra = {"_inner_class_self": args[0]}
+                        args = args[1:]
+                    inp = {}
+                    if len(args) > 0:
+                        inp['args'] = args
+                    if len(kwargs) > 0:
+                        inp['kwargs'] = kwargs
+                    gen = RunnableLambda(_param_wrapped_func).invoke(input=inp, config=config, *extra)
                     try:
                         for item in gen:
                             yield item
@@ -405,11 +419,16 @@ class CozeLoopDecorator:
                 config = kwargs.pop("config", None)
                 config = _convert_config(config)
                 try:
-                    inp = {
-                        "args": args,
-                        "kwargs": kwargs
-                    }
-                    gen = RunnableLambda(_param_wrapped_func_async).invoke(input=inp, config=config)
+                    extra = {}
+                    if len(args) > 0 and is_class_func(func):
+                        extra = {"_inner_class_self": args[0]}
+                        args = args[1:]
+                    inp = {}
+                    if len(args) > 0:
+                        inp['args'] = args
+                    if len(kwargs) > 0:
+                        inp['kwargs'] = kwargs
+                    gen = RunnableLambda(_param_wrapped_func_async).invoke(input=inp, config=config, **extra)
                     items = []
                     try:
                         async for item in gen:
@@ -428,15 +447,25 @@ class CozeLoopDecorator:
                         raise e
 
             # for convert parameter
-            def _param_wrapped_func(input_dict: dict) -> Any:
-                args = input_dict.get("args", ())
-                kwargs = input_dict.get("kwargs", {})
-                return func(*args, **kwargs)
+            def _param_wrapped_func(input_dict: dict, **kwargs) -> Any:
+                real_args = input_dict.get("args", ())
+                real_kwargs = input_dict.get("kwargs", {})
 
-            async def _param_wrapped_func_async(input_dict: dict) -> Any:
-                args = input_dict.get("args", ())
-                kwargs = input_dict.get("kwargs", {})
-                return await func(*args, **kwargs)
+                inner_class_self = kwargs.get("_inner_class_self", None)
+                if inner_class_self is not None:
+                    real_args = (inner_class_self, *real_args)
+
+                return func(*real_args, **real_kwargs)
+
+            async def _param_wrapped_func_async(input_dict: dict, **kwargs) -> Any:
+                real_args = input_dict.get("args", ())
+                real_kwargs = input_dict.get("kwargs", {})
+
+                inner_class_self = kwargs.get("_inner_class_self", None)
+                if inner_class_self is not None:
+                    real_args = (inner_class_self, *real_args)
+
+                return await func(*real_args, **real_kwargs)
 
             def _convert_config(config: RunnableConfig = None) -> RunnableConfig | None:
                 if config is None:

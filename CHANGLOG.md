@@ -2,6 +2,7 @@
 ### Added
 - add to_runnable decorator
 - lcc tool message add name and tool_call_id
+- support set finish time of span
 
 ## [0.1.24] - 2026-01-16
 ### Added

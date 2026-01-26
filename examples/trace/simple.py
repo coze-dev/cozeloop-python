@@ -4,6 +4,7 @@
 import logging
 import os
 import time
+from datetime import datetime, timedelta
 
 import cozeloop
 
@@ -100,6 +101,7 @@ def do_simple_demo():
         span.set_error(str(e))
 
     # 3. span finish
+    span.set_finish_time(datetime.now() + timedelta(seconds=3)) # set finish time as your need to change duration
     span.finish()
 
     # 4. (optional) flush or close

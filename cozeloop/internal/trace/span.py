@@ -78,6 +78,7 @@ class Span(span.Span, SpanContext, ABC):
         self.space_id = space_id
         self.parent_span_id = parent_span_id
         self.start_time = start_time if start_time else datetime.now()
+        self.finish_time: datetime = None
         self.duration = duration
         self.tag_map = tag_map if tag_map else {}
         self.system_tag_map = system_tag_map if system_tag_map else {}
@@ -396,6 +397,10 @@ class Span(span.Span, SpanContext, ABC):
     def set_deployment_env(self, deployment_env: str) -> None:
         self.set_tags({DEPLOYMENT_ENV: deployment_env})
 
+    def set_finish_time(self, finish_time: datetime) -> None:
+        self.finish_time = finish_time
+
+
     def get_rectified_map(self, input_map: Dict[str, Any]) -> (Dict[str, Any], List[str], int):
         validate_map = {}
         cut_off_keys = []
@@ -541,7 +546,10 @@ class Span(span.Span, SpanContext, ABC):
         if input_tokens > 0 or output_tokens > 0:
             self.set_tags({TOKENS: int(input_tokens) + int(output_tokens)})
 
-        duration = int((datetime.now().timestamp() - self.start_time.timestamp()) * 1000000)
+        finish_time_stamp = datetime.now().timestamp()
+        if self.finish_time is not None:
+            finish_time_stamp = self.finish_time.timestamp()
+        duration = int((finish_time_stamp - self.start_time.timestamp()) * 1000000)
         with self.lock:
             self.duration = duration
 
