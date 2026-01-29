@@ -4,8 +4,6 @@ import time
 from typing import Optional, Callable, Any, overload, Dict, Generic, Iterator, TypeVar, List, cast, AsyncIterator
 from functools import wraps
 
-from langchain_core.runnables import RunnableLambda, RunnableConfig
-
 from cozeloop import Client, Span, start_span
 from cozeloop.decorator.utils import is_async_func, is_gen_func, is_async_gen_func, is_class_func
 
@@ -333,6 +331,7 @@ class CozeLoopDecorator:
         """
 
         def decorator(func: Callable):
+            from langchain_core.runnables import RunnableLambda, RunnableConfig
 
             @wraps(func)
             def sync_wrapper(*args: Any, **kwargs: Any):

@@ -406,14 +406,21 @@ def set_default_client(client: Client):
 
 def get_default_client() -> Client:
     global _default_client
-    if _default_client is None:
+    temp_client = None
+    with _client_lock:
+        temp_client = _default_client
+    if temp_client is None:
         with _client_lock:
-            if _default_client is None:
-                try:
-                    _default_client = new_client()
-                    atexit.register(_graceful_shutdown)
-                except Exception as e:
-                    new_exception = e
+            temp_client = _default_client
+        if temp_client is None:
+            try:
+                temp_client = new_client()
+                with _client_lock:
+                    _default_client = temp_client
+                atexit.register(_graceful_shutdown)
+            except Exception as e:
+                new_exception = e
+                with _client_lock:
                     _default_client = _NoopClient(new_exception)
     return _default_client
 

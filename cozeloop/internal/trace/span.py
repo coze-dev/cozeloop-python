@@ -398,6 +398,9 @@ class Span(span.Span, SpanContext, ABC):
         self.set_tags({DEPLOYMENT_ENV: deployment_env})
 
     def set_finish_time(self, finish_time: datetime) -> None:
+        """
+        Set the finish time of the span. DO NOT use this method unless you know what you are doing.
+        """
         self.finish_time = finish_time
 
 

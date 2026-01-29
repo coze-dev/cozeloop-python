@@ -195,7 +195,7 @@ class CommonSpanSetter(ABC):
     @abstractmethod
     def set_finish_time(self, finish_time: datetime) -> None:
         """
-        Set the finish time of the span.
+        Set the finish time of the span. DO NOT use this method unless you know what you are doing.
         """
 
 
