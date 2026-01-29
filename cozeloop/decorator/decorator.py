@@ -311,6 +311,183 @@ class CozeLoopDecorator:
         else:
             return decorator(func)
 
+    def to_runnable(
+            self,
+            func: Callable = None,
+    ) -> Callable:
+        """
+        Decorator to be RunnableLambda.
+
+        :param func: The function to be decorated, Requirements are as follows：
+                     1. When the func is called, parameter config(RunnableConfig) is required, you must use the config containing cozeloop callback handler of 'current request', otherwise, the trace may be lost!
+
+        Examples:
+            @to_runnable
+            def runnable_func(my_input: dict) -> str:
+                return input
+
+            async def scorer_leader(state: MyState) -> dict | str:
+                await runnable_func({"a": "111", "b": 222, "c": "333"}, config=state.config) # config is required
+        """
+
+        def decorator(func: Callable):
+            from langchain_core.runnables import RunnableLambda, RunnableConfig
+
+            @wraps(func)
+            def sync_wrapper(*args: Any, **kwargs: Any):
+                config = kwargs.pop("config", None)
+                config = _convert_config(config)
+                res = None
+                try:
+                    extra = {}
+                    if len(args) > 0 and is_class_func(func):
+                        extra = {"_inner_class_self": args[0]}
+                        args = args[1:]
+                    inp = {}
+                    if len(args) > 0:
+                        inp['args'] = args
+                    if len(kwargs) > 0:
+                        inp['kwargs'] = kwargs
+                    res = RunnableLambda(_param_wrapped_func).invoke(input=inp, config=config, **extra)
+                    if hasattr(res, "__iter__"):
+                        return res
+                except StopIteration:
+                    pass
+                except Exception as e:
+                    raise e
+                finally:
+                    if res is not None:
+                        return res
+
+            @wraps(func)
+            async def async_wrapper(*args: Any, **kwargs: Any):
+                config = kwargs.pop("config", None)
+                config = _convert_config(config)
+                res = None
+                try:
+                    extra = {}
+                    if len(args) > 0 and is_class_func(func):
+                        extra = {"_inner_class_self": args[0]}
+                        args = args[1:]
+                    inp = {}
+                    if len(args) > 0:
+                        inp['args'] = args
+                    if len(kwargs) > 0:
+                        inp['kwargs'] = kwargs
+                    res = await RunnableLambda(_param_wrapped_func_async).ainvoke(input=inp, config=config, **extra)
+                    if hasattr(res, "__aiter__"):
+                        return res
+                except StopIteration:
+                    pass
+                except StopAsyncIteration:
+                    pass
+                except Exception as e:
+                    if e.args and e.args[0] == 'coroutine raised StopIteration':  # coroutine StopIteration
+                        pass
+                    else:
+                        raise e
+                finally:
+                    if res is not None:
+                        return res
+
+            @wraps(func)
+            def gen_wrapper(*args: Any, **kwargs: Any):
+                config = kwargs.pop("config", None)
+                config = _convert_config(config)
+                try:
+                    extra = {}
+                    if len(args) > 0 and is_class_func(func):
+                        extra = {"_inner_class_self": args[0]}
+                        args = args[1:]
+                    inp = {}
+                    if len(args) > 0:
+                        inp['args'] = args
+                    if len(kwargs) > 0:
+                        inp['kwargs'] = kwargs
+                    gen = RunnableLambda(_param_wrapped_func).invoke(input=inp, config=config, *extra)
+                    try:
+                        for item in gen:
+                            yield item
+                    except StopIteration:
+                        pass
+                except Exception as e:
+                    raise e
+
+            @wraps(func)
+            async def async_gen_wrapper(*args: Any, **kwargs: Any):
+                config = kwargs.pop("config", None)
+                config = _convert_config(config)
+                try:
+                    extra = {}
+                    if len(args) > 0 and is_class_func(func):
+                        extra = {"_inner_class_self": args[0]}
+                        args = args[1:]
+                    inp = {}
+                    if len(args) > 0:
+                        inp['args'] = args
+                    if len(kwargs) > 0:
+                        inp['kwargs'] = kwargs
+                    gen = RunnableLambda(_param_wrapped_func_async).invoke(input=inp, config=config, **extra)
+                    items = []
+                    try:
+                        async for item in gen:
+                            items.append(item)
+                            yield item
+                    finally:
+                        pass
+                except StopIteration:
+                    pass
+                except StopAsyncIteration:
+                    pass
+                except Exception as e:
+                    if e.args and e.args[0] == 'coroutine raised StopIteration':
+                        pass
+                    else:
+                        raise e
+
+            # for convert parameter
+            def _param_wrapped_func(input_dict: dict, **kwargs) -> Any:
+                real_args = input_dict.get("args", ())
+                real_kwargs = input_dict.get("kwargs", {})
+
+                inner_class_self = kwargs.get("_inner_class_self", None)
+                if inner_class_self is not None:
+                    real_args = (inner_class_self, *real_args)
+
+                return func(*real_args, **real_kwargs)
+
+            async def _param_wrapped_func_async(input_dict: dict, **kwargs) -> Any:
+                real_args = input_dict.get("args", ())
+                real_kwargs = input_dict.get("kwargs", {})
+
+                inner_class_self = kwargs.get("_inner_class_self", None)
+                if inner_class_self is not None:
+                    real_args = (inner_class_self, *real_args)
+
+                return await func(*real_args, **real_kwargs)
+
+            def _convert_config(config: RunnableConfig = None) -> RunnableConfig | None:
+                if config is None:
+                    config = RunnableConfig(run_name=func.__name__)
+                    config['run_name'] = func.__name__
+                elif isinstance(config, dict):
+                    config['run_name'] = func.__name__
+                return config
+
+            if is_async_gen_func(func):
+                return async_gen_wrapper
+            if is_gen_func(func):
+                return gen_wrapper
+            elif is_async_func(func):
+                return async_wrapper
+            else:
+                return sync_wrapper
+
+        if func is None:
+            return decorator
+        else:
+            return decorator(func)
+
 
 class _CozeLoopTraceStream(Generic[S]):
     def __init__(

@@ -125,6 +125,9 @@ class NoopSpan(Span, ABC):
     def set_deployment_env(self, deployment_env: str) -> None:
         pass
 
+    def set_finish_time(self, finish_time: datetime) -> None:
+        pass
+
     def __enter__(self):
         return self
 

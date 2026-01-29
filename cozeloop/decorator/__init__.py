@@ -5,3 +5,4 @@ from cozeloop.decorator.decorator import CozeLoopDecorator
 
 coze_loop_decorator= CozeLoopDecorator()
 observe = coze_loop_decorator.observe
+to_runnable = coze_loop_decorator.to_runnable

@@ -53,6 +53,8 @@ class Message:
     tool_calls: List[ToolCall] = None
     metadata: Optional[dict] = None
     reasoning_content: Optional[str] = None
+    name: Optional[str] = None
+    tool_call_id: Optional[str] = None
 
     def __post_init__(self):
         if self.role is not None and (self.role == 'AIMessageChunk' or self.role == 'ai'):
@@ -155,7 +157,7 @@ class ModelTraceInput:
                 if message.additional_kwargs is not None and message.additional_kwargs.get('name', ''):
                     name = message.additional_kwargs.get('name', '')
                 tool_call = ToolCall(id=message.tool_call_id, type=message.type, function=ToolFunction(name=name))
-                self._messages.append(Message(role=message.type, content=message.content, tool_calls=[tool_call]))
+                self._messages.append(Message(role=message.type, content=message.content, tool_calls=[tool_call], name=name, tool_call_id=message.tool_call_id))
             else:
                 self._messages.append(Message(role=message.type, content=message.content))
 
