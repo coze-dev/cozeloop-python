@@ -1,3 +1,7 @@
+## [0.1.26] - 2026-03-18
+### Fixed
+- update tiktoken to a weak dependency
+
 ## [0.1.25] - 2026-01-22
 ### Added
 - add to_runnable decorator
