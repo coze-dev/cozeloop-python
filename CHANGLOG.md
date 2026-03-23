@@ -1,3 +1,8 @@
+## [0.1.27] - 2026-03-18
+### Fixed
+- remove tiktoken
+- lcc support reasoning
+
 ## [0.1.26] - 2026-03-18
 ### Fixed
 - update tiktoken to a weak dependency

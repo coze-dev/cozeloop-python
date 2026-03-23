@@ -23,7 +23,7 @@ from cozeloop._client import get_default_client
 from cozeloop.integration.langchain.trace_model.llm_model import ModelTraceInput, ModelMeta, ModelTraceOutput, Message
 from cozeloop.integration.langchain.trace_model.prompt_template import PromptTraceOutput, Argument, PromptTraceInput
 from cozeloop.integration.langchain.trace_model.runtime import RuntimeInfo
-from cozeloop.integration.langchain.util import calc_token_usage, get_prompt_tag
+from cozeloop.integration.langchain.util import get_prompt_tag
 
 
 class LoopTracer:
@@ -291,21 +291,7 @@ class LoopTraceCallbackHandler(BaseCallbackHandler):
         if is_get_from_langchain:
             return result
         else:
-            try:
-                run_info = self.run_map[str(kwargs['run_id'])]
-                if run_info is not None and run_info.model_meta is not None:
-                    model_name = run_info.model_meta.model_name
-                    input_messages = run_info.model_meta.message
-                    token_usage = {
-                        'input_tokens': calc_token_usage(input_messages, model_name),
-                        'output_tokens': calc_token_usage(response, model_name),
-                        'tokens': 0
-                    }
-                    token_usage['tokens'] = token_usage['input_tokens'] + token_usage['output_tokens']
-                    return token_usage
-            except Exception as e:
-                span_tags = {'error_info': repr(e), 'error_trace': traceback.format_exc()}
-                return span_tags
+            return {}
 
     def _on_prompt_start(self, flow_span, serialized: Dict[str, Any], inputs: (Dict[str, Any], str),
                          **kwargs: Any) -> None:
