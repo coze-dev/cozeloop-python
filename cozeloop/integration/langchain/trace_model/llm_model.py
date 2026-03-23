@@ -60,9 +60,12 @@ class Message:
         if self.role is not None and (self.role == 'AIMessageChunk' or self.role == 'ai'):
             self.role = 'assistant'
         parts: Optional[List[Parts]] = []
+        reasoning_in_content = None
         if isinstance(self.content, List) and all(isinstance(x, dict) for x in self.content):
             is_parts = False
             for each in self.content:
+                if not reasoning_in_content:
+                    reasoning_in_content = each.get('summary', '')
                 text = each.get('text', None)
                 url = each.get('url', each.get('image_url', {}).get('url', None))
                 if text is None and url is None:
@@ -74,6 +77,8 @@ class Message:
             else:
                 self.content = self.content.__str__()
         elif isinstance(self.content, dict):
+            if not reasoning_in_content:
+                reasoning_in_content = self.content.get('summary', '')
             text = self.content.get('text', None)
             url = self.content.get('url', self.content.get('image_url', {}).get('url', None))
             if text is not None or url is not None:
@@ -86,6 +91,11 @@ class Message:
             self.content = None
         if len(parts) > 0:
             self.parts = parts
+        if reasoning_in_content and not self.reasoning_content:
+            if isinstance(reasoning_in_content, List):
+                self.reasoning_content = reasoning_in_content.__str__()
+            else:
+                self.reasoning_content = reasoning_in_content
 
 
 @dataclass
