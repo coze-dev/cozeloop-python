@@ -235,7 +235,7 @@ def convert_input(span_key: str, span: Span) -> (str, List[UploadFile]):
         if pydantic.VERSION.startswith('1'):
             value_res = model_input.json()
         else:
-            value_res = model_input.model_dump_json()
+            value_res = model_input.model_dump_json(exclude_none=True)
 
         if len(value_res) > MAX_BYTES_OF_ONE_TAG_VALUE_OF_INPUT_OUTPUT:
             value_res, f = transfer_text(value_res, span, span_key)
@@ -275,7 +275,10 @@ def convert_output(span_key: str, span: Span) -> (str, List[UploadFile]):
                 files = transfer_message_part(part, span, span_key)
                 upload_files.extend(files)
 
-        value_res = model_output.to_json()
+        if pydantic.VERSION.startswith('1'):
+            value_res = model_output.json()
+        else:
+            value_res = model_output.model_dump_json(exclude_none=True)
 
         if len(value) > MAX_BYTES_OF_ONE_TAG_VALUE_OF_INPUT_OUTPUT:
             value_res, f = transfer_text(value_res, span, span_key)

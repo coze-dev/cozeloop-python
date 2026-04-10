@@ -1,3 +1,7 @@
+## [0.1.28] - 2026-04-10
+### Fixed
+- model_dump_json add exclude_none=True
+
 ## [0.1.27] - 2026-03-18
 ### Fixed
 - remove tiktoken

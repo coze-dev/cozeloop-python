@@ -80,7 +80,7 @@ def to_json(param: Any) -> str:
             if pydantic.VERSION.startswith('1'):
                 return param.json()
             else:
-                return param.model_dump_json()
+                return param.model_dump_json(exclude_none=True)
         return json.dumps(param, ensure_ascii=False)
     except json.JSONDecodeError:
         return param.__str__()
