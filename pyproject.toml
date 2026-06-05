@@ -1,6 +1,6 @@
 [tool.poetry]
 name = "cozeloop"
-version = "0.1.28"
+version = "0.1.29-rc1"
 description = "coze loop sdk"
 authors = ["JiangQi715 <jiangqi.rrt@bytedance.com>"]
 license = "MIT"

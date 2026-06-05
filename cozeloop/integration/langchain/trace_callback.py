@@ -257,12 +257,12 @@ class LoopTraceCallbackHandler(BaseCallbackHandler):
             result['input_tokens'] = response.llm_output.get('token_usage', {}).get('prompt_tokens', 0)
             result['output_tokens'] = response.llm_output.get('token_usage', {}).get('completion_tokens', 0)
             result['tokens'] = result['input_tokens'] + result['output_tokens']
-            reasoning_tokens = response.llm_output.get('token_usage', {}).get('completion_tokens_details', {}).get(
-                'reasoning_tokens', 0)
+            completion_details = response.llm_output.get('token_usage', {}).get('completion_tokens_details') or {}
+            reasoning_tokens = completion_details.get('reasoning_tokens', 0)
             if reasoning_tokens:
                 result['reasoning_tokens'] = reasoning_tokens
-            input_cached_tokens = response.llm_output.get('token_usage', {}).get('prompt_tokens_details', {}).get(
-                'cached_tokens', 0)
+            prompt_details = response.llm_output.get('token_usage', {}).get('prompt_tokens_details') or {}
+            input_cached_tokens = prompt_details.get('cached_tokens', 0)
             if input_cached_tokens:
                 result['input_cached_tokens'] = input_cached_tokens
         elif response.generations is not None and len(response.generations) > 0 and response.generations[0] is not None:
