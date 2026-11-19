@@ -45,6 +45,30 @@ def main():
     cozeloop.close()
 ```
 
+### Concurrent trace reporting
+
+Set `QueueConf.export_concurrency` to configure concurrent batch exports per queue:
+
+```python
+from cozeloop import new_client
+from cozeloop.internal.trace.model.model import QueueConf
+
+client = new_client(
+    workspace_id="your_workspace_id",
+    api_token="your_api_token",
+    trace_queue_conf=QueueConf(export_concurrency=4),
+)
+# Create and finish spans as usual.
+client.close()
+```
+
+Unset values and values <= `1` preserve serial exports within each queue. Higher
+values apply independently to span, file, and respective retry queues; batches
+may complete out of order. Queue capacity, batch size, and retry counts retain
+their existing settings, and full queues still drop new items. `flush()` and
+`close()` wait for in-flight exports. Custom HTTP clients and event callbacks
+must support concurrent calls.
+
 ### Get Prompt
 ```python
 def main():

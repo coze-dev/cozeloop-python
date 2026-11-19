@@ -60,10 +60,19 @@ class TagTruncateConf:
 
 
 class QueueConf:
+    """Trace queue settings.
+
+    export_concurrency applies independently to span, file and retry queues.
+    Values <= 1 keep serial exports. Event callbacks must support concurrent
+    calls when concurrent exports are enabled.
+    """
+
     def __init__(
             self,
-            span_queue_length: int,
-            span_max_export_batch_length: int,
+            span_queue_length: int = 0,
+            span_max_export_batch_length: int = 0,
+            export_concurrency: int = 1,
     ):
         self.span_queue_length = span_queue_length
         self.span_max_export_batch_length = span_max_export_batch_length
+        self.export_concurrency = export_concurrency
