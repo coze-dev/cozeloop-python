@@ -44,6 +44,28 @@ def main():
     cozeloop.close()
 ```
 
+### 多并发 Trace 上报
+
+通过 `QueueConf.export_concurrency` 配置每个队列的批次上报并发度：
+
+```python
+from cozeloop import new_client
+from cozeloop.internal.trace.model.model import QueueConf
+
+client = new_client(
+    workspace_id="your_workspace_id",
+    api_token="your_api_token",
+    trace_queue_conf=QueueConf(export_concurrency=4),
+)
+# 按原有方式创建并结束 span。
+client.close()
+```
+
+未配置或值 <= `1` 时，每个队列保持串行上报。更大的值分别应用于 span、
+文件及其重试队列，批次可能乱序完成。队列容量、批次大小和重试次数保持原有
+配置，队列满时仍丢弃新数据。`flush()` 和 `close()` 会等待正在上报的批次
+完成。自定义 HTTP 客户端和事件回调需要支持并发调用。
+
 ### Prompt拉取
 ```python
 def main():

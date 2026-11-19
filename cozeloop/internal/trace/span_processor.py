@@ -67,7 +67,10 @@ class BatchSpanProcessor(SpanProcessor):
 
         span_queue_length = DEFAULT_MAX_QUEUE_LENGTH
         span_export_batch_size = DEFAULT_MAX_EXPORT_BATCH_LENGTH
+        export_concurrency = 1
         if queue_conf:
+            if queue_conf.export_concurrency > 1:
+                export_concurrency = queue_conf.export_concurrency
             if queue_conf.span_queue_length > 0:
                 span_queue_length = queue_conf.span_queue_length
             if queue_conf.span_max_export_batch_length > 0:  # todo: need max limit
@@ -76,6 +79,7 @@ class BatchSpanProcessor(SpanProcessor):
         self.file_retry_qm = BatchQueueManager(
             BatchQueueManagerOptions(
                 queue_name=QUEUE_NAME_FILE_RETRY,
+                export_concurrency=export_concurrency,
                 batch_timeout=FILE_SCHEDULE_DELAY,
                 max_queue_length=MAX_FILE_QUEUE_LENGTH,
                 max_export_batch_length=MAX_FILE_EXPORT_BATCH_LENGTH,
@@ -88,6 +92,7 @@ class BatchSpanProcessor(SpanProcessor):
         self.file_qm = BatchQueueManager(
             BatchQueueManagerOptions(
                 queue_name=QUEUE_NAME_FILE,
+                export_concurrency=export_concurrency,
                 batch_timeout=FILE_SCHEDULE_DELAY,
                 max_queue_length=MAX_FILE_QUEUE_LENGTH,
                 max_export_batch_length=MAX_FILE_EXPORT_BATCH_LENGTH,
@@ -100,6 +105,7 @@ class BatchSpanProcessor(SpanProcessor):
         self.span_retry_qm = BatchQueueManager(
             BatchQueueManagerOptions(
                 queue_name=QUEUE_NAME_SPAN_RETRY,
+                export_concurrency=export_concurrency,
                 batch_timeout=DEFAULT_SCHEDULE_DELAY,
                 max_queue_length=DEFAULT_MAX_RETRY_QUEUE_LENGTH,
                 max_export_batch_length=MAX_RETRY_EXPORT_BATCH_LENGTH,
@@ -112,6 +118,7 @@ class BatchSpanProcessor(SpanProcessor):
         self.span_qm = BatchQueueManager(
             BatchQueueManagerOptions(
                 queue_name=QUEUE_NAME_SPAN,
+                export_concurrency=export_concurrency,
                 batch_timeout=DEFAULT_SCHEDULE_DELAY,
                 max_queue_length=span_queue_length,
                 max_export_batch_length=span_export_batch_size,
@@ -216,7 +223,7 @@ class BatchSpanProcessor(SpanProcessor):
             try:
                 exporter.export_files(ctx, files)
             except Exception as e:
-                is_export_pass = True
+                is_export_pass = False
                 export_msg = f"{e}"
 
             elapsed_time_ms = (time.perf_counter() - before) * 1000
